@@ -31,7 +31,7 @@ This structure allows habits to be tracked with a workflow that is predictable a
 
 # Installation
 
-Install the CLI globally:
+Install the CLI globally (https://www.npmjs.com/package/hagit-cli):
 
 ```
 npm install -g hagit
