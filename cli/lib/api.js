@@ -46,6 +46,22 @@ class ApiClient {
         }
     }
 
+    // Delete habit
+    async deleteHabit(name) {
+        try {
+            const response = await axios.delete(
+                `${this.baseURL}/api/habits`,
+                {
+                    headers: this.getHeaders(),
+                    data: { name }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            throw new Error(error.response?.data?.error || 'Failed to delete habit');
+        }
+    }
+
     async getHabits() {
         try {
             const response = await axios.get(
