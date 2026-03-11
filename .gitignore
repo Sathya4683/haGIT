@@ -40,3 +40,6 @@ yarn-error.log*
 next-env.d.ts
 
 extension/IMPLEMENTATION.md
+extension/dist/
+extension/node_modules/
+
