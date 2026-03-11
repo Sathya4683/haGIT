@@ -17,7 +17,7 @@ class StateManager {
         }
 
         if (!fs.existsSync(this.configPath)) {
-            this.writeConfig({ token: null, userId: null, apiUrl: 'http://localhost:3001' });
+            this.writeConfig({ token: null, userId: null, apiUrl: 'https://hagithub.vercel.app' });
         }
 
         if (!fs.existsSync(this.headPath)) {
@@ -42,7 +42,7 @@ class StateManager {
     // Config operations
     readConfig() {
         if (!fs.existsSync(this.configPath)) {
-            return { token: null, userId: null, apiUrl: 'http://localhost:3001' };
+            return { token: null, userId: null, apiUrl: '' };
         }
         const data = fs.readFileSync(this.configPath, 'utf8');
         return JSON.parse(data);
@@ -127,7 +127,7 @@ class StateManager {
 
     getApiUrl() {
         const config = this.readConfig();
-        return config.apiUrl || 'https://hagithub.vercel.app/';
+        return config.apiUrl || 'https://hagithub.vercel.app';
     }
 }
 

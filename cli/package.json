@@ -9,13 +9,17 @@
   "scripts": {
     "link": "npm link"
   },
-  "keywords": ["habit", "tracker", "cli"],
+  "keywords": [
+    "habit",
+    "tracker",
+    "cli"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "commander": "^11.1.0",
     "axios": "^1.6.2",
     "chalk": "^4.1.2",
+    "commander": "^11.1.0",
     "ora": "^5.4.1"
   }
 }
