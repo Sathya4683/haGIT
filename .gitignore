@@ -40,7 +40,12 @@ yarn-error.log*
 next-env.d.ts
 
 # extension related 
-extension/IMPLEMENTATION.md
-extension/dist/
-extension/node_modules/
-extension/hagit-extension-v2.0.0.zip
+apps/extension/IMPLEMENTATION.md
+apps/extension/dist/
+apps/extension/node_modules/
+apps/extension/hagit-extension-v2.0.0.zip
+
+.turbo
+.next
+
+apps/web/.env
