@@ -8,6 +8,10 @@
             "outputs": [
                 ".next/**",
                 "dist/**"
+            ],
+            "env": [
+                "DATABASE_URL",
+                "JWT_SECRET"
             ]
         },
         "dev": {
