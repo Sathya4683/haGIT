@@ -39,7 +39,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# extension related 
 extension/IMPLEMENTATION.md
 extension/dist/
 extension/node_modules/
-
+extension/hagit-extension-v2.0.0.zip

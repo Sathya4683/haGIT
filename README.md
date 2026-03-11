@@ -1,40 +1,81 @@
 # haGIT
 
-haGIT is a Git-inspired habit tracking system designed for people who prefer a **developer-style workflow for building consistent habits**.
+haGIT is a Git-inspired habit tracking system designed for developers and technical users who prefer structured workflows over traditional habit-tracking interfaces.
 
-Instead of traditional habit apps with checkboxes and streak counters, haGIT models habits using familiar version control concepts such as **branches, commits, logs, and pushes**. This allows habits to be recorded, reviewed, and synchronized in a structured way.
+Instead of checklists or streak counters, haGIT models habits using familiar version control concepts such as **branches, commits, logs, and pushes**. This allows habit actions to be recorded, organized, and synchronized in a workflow similar to Git.
 
-The system consists of two components:
+The system consists of three primary components:
 
-1. **haGIT CLI** – a local command-line interface for recording and managing habit activity.
-2. **haGIT Web Dashboard** – a web application that visualizes activity using contribution graphs, commit history, and habit summaries.
+1. **haGIT CLI** — a command-line interface for recording and managing habit actions locally.
+2. **Web Dashboard** — a Next.js web application that visualizes habit activity.
+3. **Chrome Extension** — a lightweight interface for quickly creating commits and managing habits.
 
-The CLI records actions locally and synchronizes them with the server, enabling users to track progress across both the terminal and the web interface.
-
----
-
-# Concept
-
-haGIT maps common Git concepts to habit tracking:
-
-| Git Concept | haGIT Equivalent           |
-| ----------- | -------------------------- |
-| Repository  | Local habit workspace      |
-| Branch      | Individual habit           |
-| Commit      | Recorded habit action      |
-| Log         | Habit activity history     |
-| Push        | Sync commits to the server |
-
-This structure allows habits to be tracked with a workflow that is predictable and easy to understand for users familiar with Git.
+Together, these components provide both **developer-friendly workflows** and **visual insight into habit consistency**.
 
 ---
 
-# Installation
+# System Architecture
 
-Install the CLI globally (https://www.npmjs.com/package/hagit-cli):
+The haGIT ecosystem follows a centralized architecture where multiple clients interact with a unified backend implemented using **Next.js API routes**.
+
+```mermaid
+flowchart LR
+    CLI[haGIT CLI]
+    EXT[Chrome Extension]
+    WEB[Next.js Dashboard]
+    API[Next.js API Routes]
+    DB[(PostgreSQL Database)]
+
+    CLI --> API
+    EXT --> API
+    WEB --> API
+    API --> DB
+```
+
+### Interaction Overview
+
+* The **CLI** records habit commits locally and pushes them to the server.
+* The **Chrome Extension** allows quick habit management and commit creation.
+* The **Web Dashboard** provides visual analytics and habit insights.
+* **Next.js API routes** handle authentication, habits, commits, and database interaction.
+* The **database** stores users, habits, and commit records.
+
+All clients communicate with the same API routes to ensure consistent behavior across the ecosystem.
+
+---
+
+# Technology Stack
+
+The haGIT platform uses modern JavaScript tooling across the CLI, dashboard, extension, and backend.
+
+| Layer              | Technology                     | Purpose                                |
+| ------------------ | ------------------------------ | -------------------------------------- |
+| Frontend Framework | Next.js (App Router)           | Dashboard UI and API routes            |
+| Language           | TypeScript / JavaScript        | Application development                |
+| Styling            | TailwindCSS                    | Utility-first styling                  |
+| UI Components      | shadcn/ui                      | Accessible UI primitives               |
+| State Management   | Zustand                        | Global application state               |
+| Data Fetching      | TanStack Query                 | Server state synchronization           |
+| Forms              | React Hook Form                | Form handling and validation           |
+| ORM                | Prisma                         | Database access layer                  |
+| Database           | PostgreSQL (Neon)              | Managed cloud database                 |
+| CLI Framework      | Commander.js                   | Command parsing                        |
+| CLI UX             | Ora                            | Terminal spinners                      |
+| HTTP Client        | Axios                          | API requests                           |
+| Terminal Styling   | Chalk                          | CLI output formatting                  |
+| Browser Extension  | Chrome Extension (Manifest v3) | Quick habit interaction                |
+| Runtime            | Node.js                        | Backend runtime for Next.js API routes |
+
+---
+
+# CLI Installation
+
+The haGIT CLI is distributed via npm.
+
+Install it globally:
 
 ```
-npm install -g hagit
+npm install -g hagit-cli
 ```
 
 Verify installation:
@@ -43,206 +84,256 @@ Verify installation:
 hagit --version
 ```
 
----
+The CLI package is available at:
 
-# Getting Started
+https://www.npmjs.com/package/hagit-cli
 
-Navigate to the directory where you want to track habits and initialize haGIT:
-
-```
-hagit init
-```
-
-This creates a local configuration directory that stores habits, commits, and workspace metadata.
-
-Next, authenticate with the haGIT server:
-
-```
-hagit login -t <your-token>
-```
-
-The token is generated from the web dashboard and allows the CLI to sync activity to your account.
+Global installation allows the `hagit` command to be executed from any directory.
 
 ---
 
-# Core Workflow
+# CLI Command Reference
 
-A typical workflow using haGIT looks like this:
+The CLI provides a Git-like interface for managing habits.
 
-1. Initialize a habit workspace
-2. Create a habit
-3. Record actions as commits
-4. Review history locally
-5. Push commits to the server
-6. View analytics on the dashboard
+| Command                      | Description                  | Example                         |
+| ---------------------------- | ---------------------------- | ------------------------------- |
+| `hagit init`                 | Initialize haGIT workspace   | `hagit init`                    |
+| `hagit login -t <token>`     | Authenticate CLI with server | `hagit login -t TOKEN`          |
+| `hagit branch -m <habit>`    | Create a new habit           | `hagit branch -m exercise`      |
+| `hagit branch -d <habit>`    | Delete an existing habit     | `hagit branch -d exercise`      |
+| `hagit checkout <habit>`     | Switch current habit         | `hagit checkout reading`        |
+| `hagit commit -m <message>`  | Record a habit action        | `hagit commit -m "morning run"` |
+| `hagit commit -d <commitId>` | Delete a commit              | `hagit commit -d 123`           |
+| `hagit log`                  | Show commit history          | `hagit log`                     |
+| `hagit status`               | Display workspace state      | `hagit status`                  |
+| `hagit reset`                | Clear unpushed commits       | `hagit reset`                   |
+| `hagit push`                 | Sync commits with server     | `hagit push`                    |
 
-Example:
+---
+
+# CLI Workflow
+
+A typical workflow using the CLI:
 
 ```
 hagit init
-hagit branch exercise
+hagit login -t <token>
+hagit branch -m exercise
 hagit checkout exercise
 hagit commit -m "morning run"
 hagit push
 ```
 
----
+### Workflow Explanation
 
-# Commands
+1. **Initialize workspace**
 
-## init
+Creates local configuration used to track habits and commits.
 
-Initialize haGIT in the current directory.
+2. **Authenticate**
 
-```
-hagit init
-```
+Links the CLI with the user account via token authentication.
 
-Creates the local configuration used to track habits and commits.
+3. **Create habit**
 
----
+Defines a new habit branch.
 
-## login
+4. **Switch habit**
 
-Authenticate with the haGIT server.
+Sets the active habit context.
 
-```
-hagit login -t <token>
-```
+5. **Commit action**
 
-The token can be copied from the Settings section of the web dashboard.
+Records a completed habit action locally.
 
-Authentication allows the CLI to sync commits to your account.
+6. **Push commits**
 
----
-
-## branch
-
-Create a new habit.
-
-```
-hagit branch <habit-name>
-```
-
-Example:
-
-```
-hagit branch reading
-```
-
-Each habit behaves like a branch in Git.
-
----
-
-## checkout
-
-Switch to a different habit.
-
-```
-hagit checkout <habit>
-```
-
-Example:
-
-```
-hagit checkout exercise
-```
-
-All subsequent commits will be recorded under the selected habit.
-
----
-
-## commit
-
-Record a habit action.
-
-```
-hagit commit -m "message"
-```
-
-Example:
-
-```
-hagit commit -m "30 minute workout"
-```
-
-Each commit represents a completed action related to the current habit.
-
----
-
-## log
-
-View commit history.
-
-```
-hagit log
-```
-
-This displays both local and synchronized commits.
-
----
-
-## status
-
-Display current workspace state.
-
-```
-hagit status
-```
-
-Shows:
-
-* current habit
-* number of local commits
-* whether commits have been pushed
-
----
-
-## reset
-
-Clear local unpushed commits.
-
-```
-hagit reset
-```
-
-Useful for discarding mistakes before syncing with the server.
-
----
-
-## push
-
-Sync local commits to the server.
-
-```
-hagit push
-```
-
-Once pushed, commits become visible in the web dashboard and contribution graph.
+Synchronizes local commits with the server.
 
 ---
 
 # Web Dashboard
 
-The haGIT web dashboard provides a visual overview of habit activity.
+The web dashboard provides a visual interface for monitoring habit progress.
 
-Features include:
+### Features
 
-* contribution heatmap showing daily activity
-* commit history with timestamps
-* habit-level statistics
-* habit management
-* account settings and token management
+* Habit management
+* Commit history visualization
+* Contribution heatmaps
+* Aggregated activity statistics
+* User account management
+* Token management for CLI authentication
 
-Commits pushed from the CLI are automatically reflected in the dashboard.
+The dashboard emphasizes **visual insights and analytics**, helping users identify patterns in their habit consistency.
+
+---
+
+# Chrome Extension
+
+The Chrome extension provides a fast interface for interacting with haGIT without opening the dashboard.
+
+### Capabilities
+
+* Create commits quickly
+* Manage habits
+* View recent commits
+* Authenticate using token
+* Perform CRUD operations on habits and commits
+
+The extension communicates with the same **Next.js API routes** used by the CLI and dashboard.
+
+### Loading the Extension
+
+1. Build the extension.
+2. Open the Chrome extensions page:
+
+```
+chrome://extensions
+```
+
+3. Enable **Developer Mode**.
+4. Click **Load unpacked**.
+5. Select the extension build directory.
+
+---
+
+# Full System Workflow
+
+The entire system integrates CLI, extension, dashboard, and backend services.
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant EXT
+    participant WEB
+    participant API
+    participant DB
+
+    CLI->>API: Push commits
+    EXT->>API: Create commit
+    WEB->>API: Fetch commits
+    API->>DB: Store / retrieve data
+    DB-->>API: Return results
+    API-->>WEB: Habit statistics
+```
+
+### Execution Flow
+
+1. CLI records habit actions locally.
+2. CLI pushes commits to the server.
+3. Next.js API routes store commits in the PostgreSQL database.
+4. The dashboard retrieves and visualizes the data.
+5. The extension allows quick commit entry and habit management.
+
+---
+
+# Repository Structure
+
+A typical repository layout:
+
+```
+/cli
+/extension
+/prisma
+/src
+```
+
+### Directory Overview
+
+| Directory    | Purpose                                                   |
+| ------------ | --------------------------------------------------------- |
+| `/cli`       | Command-line interface implementation                     |
+| `/extension` | Chrome extension source code                              |
+| `/prisma`    | Database schema and migrations                            |
+| `/src`       | Next.js application including dashboard UI and API routes |
+
+The **Next.js API routes are implemented inside the `/src` directory**, following the App Router structure.
+
+---
+
+# Development Setup
+
+Clone the repository and install dependencies:
+
+```
+npm install
+```
+
+### Run the Dashboard
+
+```
+npm run dev
+```
+
+### Build the Application
+
+```
+npm run build
+```
+
+---
+
+# Extension Development
+
+Run extension development mode:
+
+```
+npm run dev
+```
+
+Build production extension:
+
+```
+npm run build
+```
+
+The build output will contain the compiled extension ready to load in Chrome.
+
+---
+
+# Extension Release
+
+After running:
+
+```
+npm run build
+```
+
+the extension build directory will contain:
+
+```
+manifest.json
+popup.html
+assets
+scripts
+```
+
+This folder can be loaded via the Chrome extensions page.
+
+---
+
+# Authentication Model
+
+Authentication across the system uses **JWT tokens**.
+
+Authentication flow:
+
+1. User signs in through the dashboard.
+2. A JWT token is generated.
+3. The token is used by the CLI and extension.
+4. Each request to the API routes is verified using the token.
+
+This ensures secure authentication across all clients.
 
 ---
 
 # Habit Tracking Model
 
-Each habit acts as a dedicated branch.
+Each habit behaves like a branch in version control.
 
-Example structure:
+Example habits:
 
 ```
 exercise
@@ -251,98 +342,32 @@ meditation
 coding
 ```
 
-Commits are recorded under the active habit:
+Commits represent completed habit actions:
 
 ```
 exercise
-  ├─ morning run
-  ├─ gym session
-  └─ stretching routine
+ ├ morning run
+ ├ gym session
+ └ stretching routine
 ```
 
-This allows habits to maintain their own independent history while still contributing to overall activity metrics.
+This model allows habits to maintain independent histories while contributing to overall activity metrics.
 
 ---
 
-# Synchronization
+# Design Philosophy
 
-Commits are first stored locally when created.
+haGIT is built around a simple idea:
 
-Running:
+**Consistency improves when workflows are structured and visible.**
 
-```
-hagit push
-```
+By combining:
 
-sends those commits to the server.
+* developer-friendly CLI workflows
+* quick browser extension interactions
+* visual dashboard analytics
 
-This design ensures that habit actions can still be recorded even when offline.
-
----
-
-# Best Practices
-
-Use short and descriptive commit messages.
-
-Examples:
-
-```
-hagit commit -m "read 20 pages"
-hagit commit -m "completed workout session"
-hagit commit -m "studied algorithms for 1 hour"
-```
-
-Commit messages should represent the specific action performed.
-
----
-
-# Technology Stack
-
-haGIT is built using a modern full-stack JavaScript architecture designed for scalability and maintainability.
-
-| Layer              | Technology           | Purpose                                               |
-| ------------------ | -------------------- | ----------------------------------------------------- |
-| Frontend Framework | Next.js (App Router) | Web dashboard and API routes                          |
-| Language           | TypeScript           | Type safety across frontend and backend               |
-| Styling            | TailwindCSS          | Utility-first styling system                          |
-| UI Components      | shadcn/ui            | Accessible component primitives                       |
-| State Management   | Zustand              | Lightweight global state management                   |
-| Data Fetching      | TanStack Query       | API caching, background fetching, and synchronization |
-| Forms              | React Hook Form      | Form handling and validation                          |
-| ORM                | Prisma               | Database modeling and queries                         |
-| Database           | PostgreSQL (Neon)    | Serverless managed Postgres database                  |
-| Authentication     | JWT                  | Token-based authentication for CLI and dashboard      |
-| Runtime            | Node.js              | Backend execution for API routes                      |
-
-The backend API is implemented directly within the Next.js application using **Route Handlers**, replacing the previous Express server.
-
----
-
-# Configuration
-
-haGIT stores configuration data inside a local workspace directory created during initialization.
-
-This directory contains:
-
-* habit metadata
-* commit history
-* authentication configuration
-
-Users generally do not need to modify these files manually.
-
----
-
-# Philosophy
-
-haGIT is designed around a simple idea:
-
-**Consistency can be built using structured workflows.**
-
-By treating habits as branches and actions as commits, the process of maintaining habits becomes structured, traceable, and reviewable.
-
-The CLI provides a fast and minimal interface for recording actions, while the dashboard provides visualization and analytics.
-
-Together they create a system that integrates well into a developer’s daily workflow.
+haGIT creates a system that integrates naturally into a developer’s daily workflow.
 
 ---
 
