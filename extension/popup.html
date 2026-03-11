@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>haGIT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      /* Popup has a fixed size — Chrome extensions can't be fluid */
+      body {
+        margin: 0;
+        padding: 0;
+        width: 380px;
+        min-height: 520px;
+        max-height: 600px;
+        overflow: hidden;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #fafaf7;
+        -webkit-font-smoothing: antialiased;
+      }
+      #root {
+        width: 380px;
+        height: 600px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/popup.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Exact same tokens as the web app */
+    --paper:     250 250 247;
+    --paper-alt: 241 240 235;
+    --ink:       13 13 13;
+    --ink-muted: 90 89 85;
+    --border:    13 13 13;
+    --brand:     22 163 74;
+    --card-bg:   255 255 255;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    -webkit-font-smoothing: antialiased;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgb(var(--ink));
+    background: rgb(var(--paper));
+  }
+}
+
+@layer utilities {
+  /* Brutalist card */
+  .card {
+    background: rgb(var(--card-bg));
+    border: 2px solid rgb(var(--border));
+    box-shadow: 4px 4px 0 rgb(var(--border));
+  }
+  .card-sm {
+    background: rgb(var(--card-bg));
+    border: 2px solid rgb(var(--border));
+    box-shadow: 2px 2px 0 rgb(var(--border));
+  }
+  .card-flat {
+    background: rgb(var(--card-bg));
+    border: 2px solid rgb(var(--border));
+  }
+
+  /* Button press tactile feedback */
+  .btn-press:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgb(var(--border)) !important;
+  }
+  .btn-press-sm:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 rgb(var(--border)) !important;
+  }
+
+  /* Inputs */
+  .input-brutal {
+    background: rgb(var(--paper));
+    border: 2px solid rgb(var(--border));
+    color: rgb(var(--ink));
+    outline: none;
+    font-family: 'Inter', system-ui, sans-serif;
+    transition: box-shadow 0.1s ease;
+  }
+  .input-brutal:focus {
+    box-shadow: 3px 3px 0 rgb(var(--brand));
+    border-color: rgb(var(--brand));
+  }
+  .input-brutal::placeholder {
+    color: rgb(var(--ink-muted));
+    opacity: 0.55;
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(13,13,13,0.2) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(13,13,13,0.18);
+    border-radius: 0;
+  }
+  .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  /* Skeleton shimmer */
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--paper-alt)) 25%,
+      rgba(13,13,13,0.07) 50%,
+      rgb(var(--paper-alt)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+
+  /* Toast-like status strip */
+  .status-strip {
+    border-left: 3px solid rgb(var(--brand));
+    background: rgb(var(--card-bg));
+    border-top: 1px solid rgb(var(--paper-alt));
+    border-bottom: 1px solid rgb(var(--paper-alt));
+  }
+  .status-strip-error {
+    border-left: 3px solid #dc2626;
+    background: #fef2f2;
+    border-top: 1px solid #fecaca;
+    border-bottom: 1px solid #fecaca;
+  }
+}
