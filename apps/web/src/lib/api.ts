@@ -4,6 +4,7 @@ import type {
     AggregatedCommit,
     CommitByHabit,
 } from "@/types";
+import { getUserTimezone } from "@/lib/datetime";
 
 import type {
     AuthUser,
@@ -62,7 +63,11 @@ export const commitsApi = {
     list: (params?: { habitName?: string; limit?: number }) =>
         apiClient.get<Commit[]>("/api/commits", { params }).then((r) => r.data),
     aggregated: () =>
-        apiClient.get<AggregatedCommit[]>("/api/commits/aggregated").then((r) => r.data),
+        apiClient
+            .get<AggregatedCommit[]>("/api/commits/aggregated", {
+                params: { tz: getUserTimezone() },
+            })
+            .then((r) => r.data),
     byHabit: () =>
         apiClient.get<CommitByHabit[]>("/api/commits/by-habit").then((r) => r.data),
     push: (habitName: string, message: string) =>

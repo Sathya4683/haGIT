@@ -14,8 +14,8 @@ import { DayCommitsPanel } from "@/components/dashboard/DayCommitsPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NewHabitModal } from "@/components/sidebar/NewHabitModal";
 import { ArrowLeft, Trash2 } from "lucide-react";
-import { format } from "date-fns";
 import { toast } from "sonner";
+import { localDayKey, getUserTimezone } from "@/lib/datetime";
 
 export default function DashboardPage() {
     // ── Shared ───────────────────────────────────────────────────────────────
@@ -50,8 +50,9 @@ export default function DashboardPage() {
     // ── Helpers ───────────────────────────────────────────────────────────────
     const buildHabitAggregated = useCallback((detail: HabitDetail) => {
         const countMap: Record<string, number> = {};
+        const tz = getUserTimezone();
         detail.commits.forEach((c) => {
-            const d = format(new Date(c.timestamp || c.createdAt), "yyyy-MM-dd");
+            const d = localDayKey(c.timestamp || c.createdAt, tz);
             countMap[d] = (countMap[d] || 0) + 1;
         });
         return Object.entries(countMap).map(([date, count]) => ({ date, count }));
@@ -103,8 +104,9 @@ export default function DashboardPage() {
         try {
             const all = await commitsApi.list({ limit: 500 });
             const hn = selectedHabitId !== null ? habits.find((h) => h.id === selectedHabitId)?.name : null;
+            const tz = getUserTimezone();
             setDayCommits(all.filter((c) =>
-                format(new Date(c.timestamp), "yyyy-MM-dd") === date &&
+                localDayKey(c.timestamp, tz) === date &&
                 (hn == null ? true : c.habitName === hn)
             ));
         } finally { setLoadingDayCommits(false); }
