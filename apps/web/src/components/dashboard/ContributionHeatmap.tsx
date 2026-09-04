@@ -17,11 +17,11 @@ const GAP = 3;
 
 function getColorClass(count: number): string {
     if (count === 0) return "bg-[rgb(var(--paper-alt))] border border-[rgb(var(--border))]";
-    if (count === 1) return "bg-brand-200 dark:bg-brand-900 border border-brand-300 dark:border-brand-700";
-    if (count <= 3) return "bg-brand-300 dark:bg-brand-800 border border-brand-400 dark:border-brand-600";
-    if (count <= 6) return "bg-brand-400 border border-brand-500";
-    if (count <= 9) return "bg-brand-500 border border-brand-600";
-    return "bg-brand-600 border border-brand-700 border-2";
+    if (count === 1) return "bg-brand-500/25";
+    if (count <= 3) return "bg-brand-500/50";
+    if (count <= 6) return "bg-brand-500/70";
+    if (count <= 9) return "bg-brand-500/85";
+    return "bg-brand-500";
 }
 
 export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
