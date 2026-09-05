@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
@@ -24,10 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AuthHydrator>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
-          </AuthHydrator>
+          <SessionProvider>
+            <AuthHydrator>
+              {children}
+              <Toaster position="top-right" richColors closeButton />
+            </AuthHydrator>
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

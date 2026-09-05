@@ -1,7 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
-
 }
 
 datasource db {
@@ -10,12 +9,18 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  commits   Commit[]
-  habits    Habit[]
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String?
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+
+  commits  Commit[]
+  habits   Habit[]
+  accounts Account[]
+  sessions Session[]
 }
 
 model Habit {
@@ -43,4 +48,45 @@ model Commit {
   @@index([userId])
   @@index([habitId])
   @@index([userId, timestamp])
+}
+
+// Auth.js v5 Prisma adapter tables.
+// IDs are Int to match existing User.id (NOT String/cuid like the stock adapter schema).
+// Reference: https://authjs.dev/getting-started/adapters/prisma
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
