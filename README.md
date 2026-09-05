@@ -96,19 +96,20 @@ Global installation allows the `hagit` command to be executed from any directory
 
 The CLI provides a Git-like interface for managing habits.
 
-| Command                      | Description                  | Example                         |
-| ---------------------------- | ---------------------------- | ------------------------------- |
-| `hagit init`                 | Initialize haGIT workspace   | `hagit init`                    |
-| `hagit login -t <token>`     | Authenticate CLI with server | `hagit login -t TOKEN`          |
-| `hagit branch -m <habit>`    | Create a new habit           | `hagit branch -m exercise`      |
-| `hagit branch -d <habit>`    | Delete an existing habit     | `hagit branch -d exercise`      |
-| `hagit checkout <habit>`     | Switch current habit         | `hagit checkout reading`        |
-| `hagit commit -m <message>`  | Record a habit action        | `hagit commit -m "morning run"` |
-| `hagit commit -d <commitId>` | Delete a commit              | `hagit commit -d 123`           |
-| `hagit log`                  | Show commit history          | `hagit log`                     |
-| `hagit status`               | Display workspace state      | `hagit status`                  |
-| `hagit reset`                | Clear unpushed commits       | `hagit reset`                   |
-| `hagit push`                 | Sync commits with server     | `hagit push`                    |
+| Command                      | Description                          | Example                         |
+| ---------------------------- | ------------------------------------ | ------------------------------- |
+| `hagit init`                 | Initialize haGIT workspace           | `hagit init`                    |
+| `hagit login -t <token>`     | Authenticate CLI with server         | `hagit login -t TOKEN`          |
+| `hagit branch`               | List habits (current marked with `*`) | `hagit branch`                  |
+| `hagit branch -m <habit>`    | Create a new habit                   | `hagit branch -m exercise`      |
+| `hagit branch -d <habit>`    | Delete an existing habit             | `hagit branch -d exercise`      |
+| `hagit checkout <habit>`     | Switch current habit                 | `hagit checkout reading`        |
+| `hagit commit -m <message>`  | Record a habit action                | `hagit commit -m "morning run"` |
+| `hagit commit -d <commitId>` | Delete a commit                      | `hagit commit -d 123`           |
+| `hagit log`                  | Show commit history (per-habit numbered) | `hagit log`                     |
+| `hagit status`               | Display workspace state              | `hagit status`                  |
+| `hagit reset`                | Clear unpushed commits               | `hagit reset`                   |
+| `hagit push`                 | Sync commits with server             | `hagit push`                    |
 
 ---
 

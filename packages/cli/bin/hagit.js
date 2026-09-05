@@ -9,6 +9,7 @@ const {
     initCommand,
     loginCommand,
     branchCommand,
+    listBranchesCommand,
     checkoutCommand,
     commitCommand,
     logCommand,
@@ -50,11 +51,12 @@ program
         }
     });
 
-// hagit branch -m "habit name"
-// hagit branch -d "habit name"
+// hagit branch              — list habits (current marked)
+// hagit branch -m <name>    — create a habit
+// hagit branch -d <name>    — delete a habit
 program
     .command('branch')
-    .description('Create or delete a habit (branch)')
+    .description('List, create, or delete habits (branches)')
     .option('-m, --message <name>', 'Create a new habit')
     .option('-d, --delete <name>', 'Delete an existing habit')
     .action(async (options) => {
@@ -64,8 +66,7 @@ program
             } else if (options.delete) {
                 await deleteHabitCommand(options.delete);
             } else {
-                console.error(chalk.red('Error: You must provide either -m or -d'));
-                process.exit(1);
+                await listBranchesCommand();
             }
         } catch (error) {
             console.error(chalk.red(`Error: ${error.message}`));

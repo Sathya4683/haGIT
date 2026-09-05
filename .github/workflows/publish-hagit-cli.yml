@@ -17,7 +17,7 @@ jobs:
       cancel-in-progress: false
 
     permissions:
-      contents: read          # required to checkout
+      contents: write         # write: needed by action-gh-release to publish the Release
       id-token: write         # required for npm provenance (--provenance)
 
     steps:
@@ -62,3 +62,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
+
+      # Create a GitHub Release from this tag's commits. Uses the workflow's
+      # built-in GITHUB_TOKEN (no extra secret). generate_release_notes auto-
+      # writes a bulleted changelog from PRs/commits since the previous tag.
+      # Pre-release tags (-rc/-alpha/-beta) are marked so they don't show as
+      # "Latest" on the Releases page.
+      # Refs: https://github.com/softprops/action-gh-release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}

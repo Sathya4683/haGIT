@@ -193,12 +193,17 @@ async function logCommand(limit) {
         return;
     }
 
+    const shownCount = commitsToShow.length;
     commitsToShow.forEach((commit, index) => {
         const isLocal = commit.synced === false;
         const date = new Date(commit.timestamp);
         const dateStr = date.toLocaleString();
 
-        console.log(chalk.yellow(`commit ${commit.id}${isLocal ? ' (local)' : ''}`));
+        // Descending display order, but position counts from the OLDEST in the
+        // shown window — so the top entry has the highest position number.
+        const position = shownCount - index;
+        const idLabel = isLocal ? '(local)' : `(#${commit.id})`;
+        console.log(chalk.yellow(`commit ${position} of ${shownCount} ${idLabel}`));
         console.log(chalk.gray(`Date:   ${dateStr}`));
         console.log(`\n    ${commit.message}\n`);
     });
@@ -206,6 +211,53 @@ async function logCommand(limit) {
     if (uniqueCommits.length > limit) {
         console.log(chalk.gray(`... and ${uniqueCommits.length - limit} more commits`));
     }
+}
+
+// hagit branch (no flags) — list habits, current marked
+async function listBranchesCommand() {
+    if (!StateManager.isInitialized()) {
+        throw new Error('haGIT not initialized. Run: hagit init');
+    }
+
+    const spinner = ora('Loading habits...').start();
+
+    let habits;
+    try {
+        habits = await ApiClient.getHabits();
+        spinner.stop();
+    } catch (error) {
+        spinner.fail('Failed to fetch habits');
+        throw error;
+    }
+
+    if (habits.length === 0) {
+        console.log(chalk.gray('\nNo habits yet. Create one with: hagit branch -m <name>\n'));
+        return;
+    }
+
+    const currentHabit = StateManager.readHEAD();
+
+    // Current habit pinned to the top; rest sorted alphabetically (matches `git branch`).
+    const sorted = [...habits].sort((a, b) => {
+        if (a.name === currentHabit) return -1;
+        if (b.name === currentHabit) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    // Pad raw strings before applying chalk so ANSI escapes don't break alignment.
+    const maxNameLen = Math.max(...sorted.map((h) => h.name.length));
+    const maxCountLen = Math.max(...sorted.map((h) => String(h.commitCount).length));
+
+    sorted.forEach((habit) => {
+        const isCurrent = habit.name === currentHabit;
+        const marker = isCurrent ? chalk.green('* ') : '  ';
+        const paddedName = habit.name.padEnd(maxNameLen);
+        const name = isCurrent ? chalk.green(chalk.bold(paddedName)) : paddedName;
+        const paddedCount = String(habit.commitCount).padStart(maxCountLen);
+        const countLabel = `${paddedCount} commit${habit.commitCount === 1 ? '' : 's'}`;
+        console.log(`${marker}${name}  ${chalk.gray(countLabel)}`);
+    });
+    console.log();
 }
 
 // hagit status
@@ -299,6 +351,7 @@ module.exports = {
     initCommand,
     loginCommand,
     branchCommand,
+    listBranchesCommand,
     checkoutCommand,
     commitCommand,
     logCommand,
