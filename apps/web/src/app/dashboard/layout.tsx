@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAuthStore } from "@/store/authStore";
@@ -10,33 +10,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data: nextAuthSession } = useSession();
     const setUser = useAuthStore((s) => s.setUser);
 
-    // OAuth bridge: if we have an Auth.js session but no local user yet
-    // (e.g., just landed here after Google/GitHub/Microsoft sign-in), fetch
-    // the legacy JWT from /api/auth/session-token and populate authStore so the
-    // SettingsDrawer CLI Token panel + every Bearer-protected API call works.
+    // Tracks whether the bridge request is currently in flight, so the redirect
+    // effect below doesn't bounce an OAuth user back to /auth/login while the
+    // JWT is still being fetched.
+    const bridgingRef = useRef(false);
+
+    // OAuth bridge: fires once when the authStore has finished hydrating with
+    // no user (covers the case where someone lands on /dashboard right after
+    // Google/GitHub/Microsoft sign-in, where the Auth.js session cookie is set
+    // but the localStorage `hagit_user` blob is empty). The route returns 401
+    // if there's no session, in which case the redirect effect below kicks in.
+    //
+    // Deliberately does NOT depend on `nextAuthSession` — useSession() polls and
+    // would re-trigger this effect on every poll, hammering the bridge route.
     useEffect(() => {
         if (isLoading || user) return;
-        if (!nextAuthSession?.user) return;
+        if (bridgingRef.current) return;
 
+        bridgingRef.current = true;
         let cancelled = false;
         (async () => {
             try {
                 const res = await fetch("/api/auth/session-token");
-                if (!res.ok || cancelled) return;
+                if (!res.ok || cancelled) {
+                    bridgingRef.current = false;
+                    return;
+                }
                 const data = await res.json();
                 if (cancelled) return;
                 setUser({ userId: data.userId, email: data.email, token: data.token });
+                bridgingRef.current = false;
             } catch {
-                // Network error or no session — fall through to the existing
-                // unauthenticated redirect below.
+                bridgingRef.current = false;
             }
         })();
         return () => { cancelled = true; };
-    }, [isLoading, user, nextAuthSession, setUser]);
+    }, [isLoading, user, setUser]);
 
+    // Redirect to /auth/login only when the authStore has no user AND there is
+    // no in-flight OAuth bridge AND no Auth.js session to bridge from. The
+    // session check is what makes OAuth return-URLs land on /dashboard rather
+    // than bouncing back to /auth/login while the bridge is still fetching.
     useEffect(() => {
-        if (!isLoading && !user) router.replace("/auth/login");
-    }, [user, isLoading, router]);
+        if (isLoading) return;
+        if (user) return;
+        if (bridgingRef.current) return;
+        if (nextAuthSession?.user) return;
+        router.replace("/auth/login");
+    }, [user, isLoading, nextAuthSession, router]);
 
     if (isLoading) {
         return (
