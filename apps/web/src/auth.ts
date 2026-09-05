@@ -34,7 +34,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             //       https://github.com/nextauthjs/next-auth/issues/13409
             issuer: "https://github.com/login/oauth",
         }),
-        MicrosoftEntraID({ allowDangerousEmailAccountLinking: true }),
+        MicrosoftEntraID({
+            allowDangerousEmailAccountLinking: true,
+            // Microsoft has also been rolling out the `iss` parameter on
+            // OAuth callbacks (RFC 9207). The Microsoft provider's default
+            // issuer is `https://login.microsoftonline.com/common/v2.0`,
+            // and the `conformInternal` block in @auth/core's callback.js
+            // re-derives the per-tenant issuer from the id_token's `tid`
+            // claim — but the v5 beta normalization doesn't thread the
+            // derived issuer through cleanly, so the validator falls back
+            // to "https://authjs.dev" and every Microsoft sign-in fails
+            // with `Configuration`. Pin the common endpoint explicitly so
+            // the discovery path resolves to a working OIDC server.
+            // Refs: https://datatracker.ietf.org/doc/html/rfc9207
+            //       https://github.com/nextauthjs/next-auth/issues/13409
+            issuer: "https://login.microsoftonline.com/common/v2.0",
+        }),
     ],
     callbacks: {
         async jwt({ token, user }) {
