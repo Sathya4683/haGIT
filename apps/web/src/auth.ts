@@ -22,7 +22,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session: { strategy: "jwt" },
     providers: [
         Google({ allowDangerousEmailAccountLinking: true }),
-        GitHub({ allowDangerousEmailAccountLinking: true }),
+        GitHub({
+            allowDangerousEmailAccountLinking: true,
+            // GitHub began sending the `iss` parameter on OAuth callbacks
+            // (RFC 9207) in 2026. Auth.js's oauth4webapi strictly validates
+            // it against the provider's `issuer` config, falling back to
+            // "https://authjs.dev" if not set explicitly — which then fails
+            // every GitHub sign-in with `Configuration`. Pin it here so the
+            // validator matches what GitHub actually sends.
+            // Refs: https://datatracker.ietf.org/doc/html/rfc9207
+            //       https://github.com/nextauthjs/next-auth/issues/13409
+            issuer: "https://github.com/login/oauth",
+        }),
         MicrosoftEntraID({ allowDangerousEmailAccountLinking: true }),
     ],
     callbacks: {
