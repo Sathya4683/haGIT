@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         // instead of letting bcrypt.compare throw on `null`.
         if (!user.password) {
             return badRequest(
-                "This account uses social login. Please sign in with Google, GitHub, or Microsoft."
+                "This account uses social login. Please sign in with Google or GitHub."
             );
         }
 

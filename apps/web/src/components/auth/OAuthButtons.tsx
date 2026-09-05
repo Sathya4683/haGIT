@@ -38,21 +38,9 @@ function GitHubIcon({ className }: { className?: string }) {
     );
 }
 
-function MicrosoftIcon({ className }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-            <rect width="11" height="11" fill="#F25022" />
-            <rect x="13" width="11" height="11" fill="#7FBA00" />
-            <rect y="13" width="11" height="11" fill="#00A4EF" />
-            <rect x="13" y="13" width="11" height="11" fill="#FFB900" />
-        </svg>
-    );
-}
-
 const providers = [
     { id: "google", label: "Continue with Google", Icon: GoogleIcon },
     { id: "github", label: "Continue with GitHub", Icon: GitHubIcon },
-    { id: "microsoft-entra-id", label: "Continue with Microsoft", Icon: MicrosoftIcon },
 ] as const;
 
 interface Props {

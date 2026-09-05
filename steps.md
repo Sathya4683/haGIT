@@ -12,16 +12,15 @@ Vercel deployment, and the npm publishing pipeline. Read this when you need to:
 
 ## 1. OAuth Provider Setup
 
-The web app supports Google, GitHub, and Microsoft Entra ID. Each provider requires a
-client application to be registered at their respective developer console. The redirect
-URI (also called "callback URL") for each provider is:
+The web app supports Google and GitHub. Each provider requires a client application to be
+registered at their respective developer console. The redirect URI (also called
+"callback URL") for each provider is:
 
 ```
 https://hagithub.vercel.app/api/auth/callback/<provider-id>
 ```
 
-`provider-id` is `google`, `github`, or `microsoft-entra-id`. For local development,
-also register:
+`provider-id` is `google` or `github`. For local development, also register:
 
 ```
 http://localhost:3000/api/auth/callback/<provider-id>
@@ -51,21 +50,6 @@ Docs: <https://support.google.com/cloud/answer/6158849>
 7. Generate a client secret → `AUTH_GITHUB_SECRET`.
 
 Docs: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app>
-
-### 1.3 Microsoft Entra ID
-
-1. Go to [Microsoft Entra admin center](https://entra.microsoft.com/).
-2. **Applications → App registrations → New registration**.
-3. Name: `haGIT`.
-4. Supported account types: **Accounts in any organizational directory (Any Entra ID
-   tenant - Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)**.
-   This lets personal `@outlook.com` / `@hotmail.com` accounts sign in too.
-5. **Authentication → Add a platform → Web**.
-6. Redirect URI: the Microsoft callback URL above.
-7. **Certificates & secrets → New client secret** → copy value → `AUTH_MICROSOFT_ENTRA_ID_SECRET`.
-8. **Overview** → copy **Application (client) ID** → `AUTH_MICROSOFT_ENTRA_ID_ID`.
-
-Docs: <https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app>
 
 ---
 
@@ -136,15 +120,13 @@ Add all of the following in **Project Settings → Environment Variables** for P
 | `AUTH_GOOGLE_SECRET` | Google Cloud Console |
 | `AUTH_GITHUB_ID` | GitHub Developer Settings |
 | `AUTH_GITHUB_SECRET` | GitHub Developer Settings |
-| `AUTH_MICROSOFT_ENTRA_ID_ID` | Entra admin center |
-| `AUTH_MICROSOFT_ENTRA_ID_SECRET` | Entra admin center |
 
 `AUTH_URL` and `AUTH_TRUST_HOST` are auto-inferred on Vercel (the `VERCEL` env var is
 present); set them explicitly only if running behind a custom proxy.
 
 ### Verification after deploy
 
-1. Hit `https://hagithub.vercel.app/auth/login`. Three OAuth buttons should render.
+1. Hit `https://hagithub.vercel.app/auth/login`. Two OAuth buttons should render (Google, GitHub).
 2. Sign in with each provider. Verify the dashboard loads and SettingsDrawer shows a JWT.
 3. Sign in with GitHub using an existing password user's email. Confirm only one `User`
    row exists in the DB for that email (account linking works).
@@ -252,12 +234,10 @@ output and any warnings.
 - Prisma adapter: <https://authjs.dev/getting-started/adapters/prisma>
 - Google provider: <https://authjs.dev/getting-started/providers/google>
 - GitHub provider: <https://authjs.dev/getting-started/providers/github>
-- Microsoft Entra ID: <https://authjs.dev/getting-started/providers/microsoft-entra-id>
 
 ### OAuth provider docs
 - Google Cloud OAuth: <https://support.google.com/cloud/answer/6158849>
 - GitHub OAuth Apps: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app>
-- Microsoft Entra app registration: <https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app>
 
 ### npm + GitHub Actions
 - npm provenance: <https://docs.npmjs.com/generating-provenance-statements>

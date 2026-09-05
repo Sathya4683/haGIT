@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // OAuth bridge: fires once when the authStore has finished hydrating with
     // no user (covers the case where someone lands on /dashboard right after
-    // Google/GitHub/Microsoft sign-in, where the Auth.js session cookie is set
+    // Google/GitHub sign-in, where the Auth.js session cookie is set
     // but the localStorage `hagit_user` blob is empty). The route returns 401
     // if there's no session, in which case the redirect effect below kicks in.
     //
