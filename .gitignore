@@ -39,11 +39,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# extension related 
+# extension related
 apps/extension/IMPLEMENTATION.md
 apps/extension/dist/
 apps/extension/node_modules/
 apps/extension/hagit-extension-v2.0.0.zip
+
+# agent / planning notes — runbooks and spec files used during development
+# but not part of the published codebase. Add to this block when dropping
+# a new top-level *-spec.md / *-plan.md / runbook file.
+/steps.md
+/auth_and_actions.md
+/*.plan.md
+/*.spec.md
 
 .turbo
 .next
