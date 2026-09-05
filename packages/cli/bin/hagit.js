@@ -2,6 +2,7 @@
 
 const { program } = require('commander');
 const chalk = require('chalk');
+const pkg = require('../package.json');
 const StateManager = require('../lib/state');
 const ApiClient = require('../lib/api');
 const {
@@ -20,7 +21,7 @@ const {
 program
     .name('hagit')
     .description('Git-style habit tracker')
-    .version('1.0.0');
+    .version(pkg.version);
 
 // hagit init
 program

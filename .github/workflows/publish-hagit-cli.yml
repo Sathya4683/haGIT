@@ -1,0 +1,64 @@
+name: Publish hagit-cli to npm
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Single-job concurrency: prevents two publishes clashing if a tag is
+    # force-pushed or retried before the previous run finishes.
+    concurrency:
+      group: publish-hagit-cli
+      cancel-in-progress: false
+
+    permissions:
+      contents: read          # required to checkout
+      id-token: write         # required for npm provenance (--provenance)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify tag matches package version
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          echo "package.json: $PKG_VERSION"
+          echo "tag:          $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+      - name: Verify version not already published
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          # `npm view <pkg>@<version> version` returns the version string if it
+          # exists, non-zero exit otherwise. `|| echo ""` keeps the script alive
+          # on a 404 so the next `if` can branch on the empty result.
+          PUBLISHED=$(npm view hagit-cli@$PKG_VERSION version 2>/dev/null || echo "")
+          if [ -n "$PUBLISHED" ]; then
+            echo "::error::hagit-cli@$PKG_VERSION is already published on npm — refusing to republish."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        working-directory: packages/cli
+        run: npm ci
+
+      - name: Publish
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

@@ -13,6 +13,14 @@ export async function POST(req: NextRequest) {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return badRequest("Invalid email or password.");
 
+        // OAuth-only accounts have no password. Direct them to social login
+        // instead of letting bcrypt.compare throw on `null`.
+        if (!user.password) {
+            return badRequest(
+                "This account uses social login. Please sign in with Google or GitHub."
+            );
+        }
+
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return badRequest("Invalid email or password.");
 

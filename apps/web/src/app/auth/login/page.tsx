@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -80,6 +81,19 @@ export default function LoginPage() {
                     </button>
                 </div>
             </form>
+
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t-2 border-dashed border-[rgb(var(--border))]" />
+                </div>
+                <div className="relative flex justify-center">
+                    <span className="bg-[rgb(var(--paper))] px-3 text-[10px] font-black uppercase tracking-widest text-[rgb(var(--ink-muted))]">
+                        or
+                    </span>
+                </div>
+            </div>
+
+            <OAuthButtons callbackUrl="/dashboard" />
 
             <p className="text-sm text-[rgb(var(--ink-muted))]">
                 No account?{" "}
