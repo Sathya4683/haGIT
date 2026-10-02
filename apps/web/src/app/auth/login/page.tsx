@@ -6,6 +6,7 @@ import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -22,8 +23,7 @@ export default function LoginPage() {
             setUser(user);
             router.push("/dashboard");
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Incorrect email or password.";
-            toast.error(msg);
+            toast.error(apiErrorMessage(err, "Incorrect email or password."));
         } finally {
             setLoading(false);
         }

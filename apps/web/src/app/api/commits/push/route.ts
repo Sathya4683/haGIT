@@ -2,17 +2,22 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { requireAuth, unauthorized, badRequest, serverError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
 
 // POST /api/commits/push
 // Body: { commits: [{ habitName, message, timestamp }] }
 export async function POST(req: NextRequest) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "commits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const body = await req.json();
         const commits: { habitName: string; message: string; timestamp: string }[] = body.commits;
 
         if (!Array.isArray(commits) || commits.length === 0)
             return badRequest("commits array is required.");
+        if (commits.length > 100)
+            return badRequest("A maximum of 100 commits can be pushed at once.");
 
         const results = [];
         for (const c of commits) {

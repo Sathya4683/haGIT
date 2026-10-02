@@ -6,6 +6,7 @@ import { commitsApi } from "@/lib/api";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 
 interface Props { date: string; commits: Commit[]; loading: boolean; onClose: () => void; onDeleted?: (id: string) => void; }
 
@@ -22,7 +23,7 @@ export function DayCommitsPanel({ date, commits, loading, onClose, onDeleted }: 
             toast.success("Commit deleted.");
             onDeleted?.(pendingDelete.id);
             setPendingDelete(null);
-        } catch { toast.error("Failed to delete commit."); }
+        } catch (error) { toast.error(apiErrorMessage(error, "Failed to delete commit.")); }
         finally { setDeleting(false); }
     };
 

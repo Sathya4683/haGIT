@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NewHabitModal } from "@/components/sidebar/NewHabitModal";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 import { localDayKey, getUserTimezone } from "@/lib/datetime";
 
 export default function DashboardPage() {
@@ -138,7 +139,7 @@ export default function DashboardPage() {
             commitsApi.aggregated().then(setAggregated);
             commitsApi.byHabit().then(setCommitsByHabit);
             habitsApi.list().then(setHabits);
-        } catch { toast.error("Failed to clear commits."); }
+        } catch (error) { toast.error(apiErrorMessage(error, "Failed to clear commits.")); }
         finally { setClearingCommits(false); }
     };
 
@@ -151,7 +152,7 @@ export default function DashboardPage() {
             toast.success(`"${pendingDeleteHabit.name}" deleted.`);
             setPendingDeleteHabit(null);
             loadOverview();
-        } catch { toast.error("Failed to delete habit."); }
+        } catch (error) { toast.error(apiErrorMessage(error, "Failed to delete habit.")); }
         finally { setDeletingHabit(false); }
     };
 

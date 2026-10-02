@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { habitsApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 import type { Habit } from "@hagit/types";
 import { cn } from "@/lib/utils";
 import { Plus, Sun, Moon, Copy, Check, LogOut, Trash2, X } from "lucide-react";
@@ -140,8 +141,8 @@ export function Sidebar({
             onHabitDeleted?.(pendingDeleteHabit.id);
             toast.success(`"${pendingDeleteHabit.name}" deleted`);
             setPendingDeleteHabit(null);
-        } catch {
-            toast.error("Failed to delete habit.");
+        } catch (error) {
+            toast.error(apiErrorMessage(error, "Failed to delete habit."));
         } finally {
             setDeletingHabit(false);
         }

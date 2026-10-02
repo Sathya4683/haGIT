@@ -3,6 +3,8 @@ import { useState } from "react";
 import { habitsApi } from "@/lib/api";
 import type { Habit } from "@hagit/types";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 
 interface Props { onClose: () => void; onCreated: (habit: Habit) => void; }
 
@@ -18,8 +20,12 @@ export function NewHabitModal({ onClose, onCreated }: Props) {
         try {
             const habit = await habitsApi.create(name.trim());
             onCreated({ ...habit, commitCount: 0 });
-        } catch {
-            setError("Failed to create habit.");
+        } catch (error) {
+            const message = apiErrorMessage(error, "Failed to create habit.");
+            setError(message);
+            if ((error as { response?: { status?: number } })?.response?.status === 429) {
+                toast.error(message);
+            }
         } finally { setLoading(false); }
     };
 

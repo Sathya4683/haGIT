@@ -4,9 +4,12 @@ import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken, badRequest, serverError } from "@/lib/auth";
+import { limitAuthIp, rateLimitExceeded } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
     try {
+        const rateLimit = await limitAuthIp(req, "login");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const { email, password } = await req.json();
         if (!email || !password) return badRequest("Email and password are required.");
 

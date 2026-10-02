@@ -6,6 +6,7 @@ import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 
 export default function SignupPage() {
     const router = useRouter();
@@ -23,8 +24,7 @@ export default function SignupPage() {
             setUser(user);
             router.push("/dashboard");
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Signup failed.";
-            toast.error(msg);
+            toast.error(apiErrorMessage(err, "Signup failed."));
         } finally {
             setLoading(false);
         }

@@ -4,6 +4,7 @@ import { commitsApi } from "@/lib/api";
 import type { Habit } from "@hagit/types";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api-errors";
 
 interface Props { habits: Habit[]; onClose: () => void; onSuccess: () => void; defaultHabitName?: string; }
 
@@ -20,7 +21,7 @@ export function PushCommitModal({ habits, onClose, onSuccess, defaultHabitName }
             await commitsApi.push(habitName, message.trim());
             toast.success("Commit pushed.");
             onSuccess(); onClose();
-        } catch { toast.error("Failed to push commit."); }
+        } catch (error) { toast.error(apiErrorMessage(error, "Failed to push commit.")); }
         finally { setLoading(false); }
     };
 

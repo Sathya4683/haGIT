@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { requireAuth, unauthorized, badRequest, serverError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
 
 // GET /api/habits
 export async function GET(req: NextRequest) {
@@ -31,6 +32,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "habits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const { name } = await req.json();
         if (!name?.trim()) return badRequest("Habit name is required.");
 
@@ -54,6 +57,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "habits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const { name } = await req.json();
 
         if (!name?.trim()) {

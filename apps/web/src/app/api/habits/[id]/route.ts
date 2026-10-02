@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { requireAuth, unauthorized, notFound, badRequest, serverError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
 
 // GET /api/habits/:id
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -42,6 +43,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "habits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const id = parseInt(params.id, 10);
         if (isNaN(id)) return notFound();
         const { name } = await req.json();
@@ -63,6 +66,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "habits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const id = parseInt(params.id, 10);
         if (isNaN(id)) return notFound();
 

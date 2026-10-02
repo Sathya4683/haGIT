@@ -2,11 +2,14 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { requireAuth, unauthorized, notFound, serverError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
 
 // DELETE /api/commits/:id
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const payload = requireAuth(req);
+        const rateLimit = await limitUserOperation(payload.userId, "commits");
+        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
         const id = parseInt(params.id, 10);
         if (isNaN(id)) return notFound();
 

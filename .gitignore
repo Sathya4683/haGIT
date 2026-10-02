@@ -57,3 +57,6 @@ apps/extension/hagit-extension-v2.0.0.zip
 .next
 
 apps/web/.env
+apps/web/node_modules
+apps/web/dump.sql
+dump.sql
