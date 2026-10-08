@@ -1,0 +1,46 @@
+{
+    "name": "hagit-mcp",
+    "version": "0.1.0",
+    "description": "MCP server for haGIT — lets AI assistants read your habit stats, log check-ins and create habits",
+    "type": "module",
+    "bin": {
+        "hagit-mcp": "./dist/index.js"
+    },
+    "files": [
+        "dist"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build": "node build.mjs",
+        "start": "node dist/index.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "keywords": [
+        "habit",
+        "tracker",
+        "mcp",
+        "model-context-protocol"
+    ],
+    "author": "",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Sathya4683/haGIT.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Sathya4683/haGIT/issues"
+    },
+    "homepage": "https://github.com/Sathya4683/haGIT#readme",
+    "dependencies": {
+        "@modelcontextprotocol/server": "^2.3.1",
+        "zod": "^4.6.5"
+    },
+    "devDependencies": {
+        "@hagit/coach-core": "*",
+        "@types/node": "^20",
+        "esbuild": "^0.28.2",
+        "typescript": "^5"
+    }
+}

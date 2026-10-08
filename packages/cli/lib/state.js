@@ -8,6 +8,7 @@ class StateManager {
         this.configPath = path.join(this.hagitDir, 'config.json');
         this.headPath = path.join(this.hagitDir, 'HEAD');
         this.commitsPath = path.join(this.hagitDir, 'commits.json');
+        this.coachLastPath = path.join(this.hagitDir, 'coach-last.json');
     }
 
     // Initialize ~/.hagit directory structure
@@ -107,6 +108,22 @@ class StateManager {
     // Get all unpushed commits
     getUnpushedCommits() {
         return this.readCommits();
+    }
+
+    // Last coach review — sent with the next review so the coach can follow up
+    readLastReview() {
+        if (!fs.existsSync(this.coachLastPath)) {
+            return null;
+        }
+        try {
+            return JSON.parse(fs.readFileSync(this.coachLastPath, 'utf8'));
+        } catch {
+            return null; // a corrupt cache just means no follow-up this time
+        }
+    }
+
+    writeLastReview(review) {
+        fs.writeFileSync(this.coachLastPath, JSON.stringify(review, null, 2));
     }
 
     // Authentication helpers

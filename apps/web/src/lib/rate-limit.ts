@@ -109,11 +109,15 @@ export function clientIpKey(req: NextRequest) {
     return createHash("sha256").update(address).digest("hex");
 }
 
-export async function limitUserOperation(userId: number, operation: "habits" | "commits") {
+type UserOperation = "habits" | "commits" | "coach";
+
+export async function limitUserOperation(userId: number, operation: UserOperation) {
     return checkRateLimit(`user:${userId}:${operation}`, userOperationLimitConfig(operation));
 }
 
-export function userOperationLimitConfig(_operation: "habits" | "commits"): BucketOptions {
+export function userOperationLimitConfig(operation: UserOperation): BucketOptions {
+    // One coach run is several Gemini calls against a free-tier quota shared by every user.
+    if (operation === "coach") return { capacity: 5, refillPerSecond: 5 / 3600 };
     return { capacity: 20, refillPerSecond: 20 / 60 };
 }
 

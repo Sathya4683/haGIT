@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "@auth/prisma-adapter": "^2.11.3",
+        "@hagit/coach-core": "*",
         "@hagit/types": "*",
         "@prisma/client": "^5.18.0",
         "@radix-ui/react-dialog": "^1.1.1",

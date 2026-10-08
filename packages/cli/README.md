@@ -82,6 +82,8 @@ hagit push
 | `hagit status`               | Show workspace state                 | `hagit status`                    |
 | `hagit reset`                | Clear local commits                  | `hagit reset`                     |
 | `hagit push`                 | Sync commits with server             | `hagit push`                      |
+| `hagit coach`                | AI review of your week               | `hagit coach -v`                  |
+| `hagit coach "<question>"`   | Ask the coach about your habits      | `hagit coach "why do I skip gym?"` |
 
 ---
 
@@ -126,13 +128,15 @@ This directory contains:
 config.json
 HEAD
 commits.json
+coach-last.json
 ```
 
-| File           | Purpose                                 |
-| -------------- | --------------------------------------- |
-| `config.json`  | Stores authentication token and API URL |
-| `HEAD`         | Current active habit                    |
-| `commits.json` | Local commit history                    |
+| File              | Purpose                                         |
+| ----------------- | ----------------------------------------------- |
+| `config.json`     | Stores authentication token and API URL         |
+| `HEAD`            | Current active habit                            |
+| `commits.json`    | Local commit history                            |
+| `coach-last.json` | Last `hagit coach` review, so the next one can follow up |
 
 Commits are stored locally until they are pushed to the server.
 

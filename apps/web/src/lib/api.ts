@@ -3,6 +3,7 @@ import type {
     VerifyResponse,
     AggregatedCommit,
     CommitByHabit,
+    CoachResponse,
 } from "@/types";
 import { getUserTimezone } from "@/lib/datetime";
 
@@ -81,6 +82,13 @@ export const commitsApi = {
     deleteByHabit: (habitId: number) =>
         apiClient
             .delete<{ success: boolean; deletedCount: number }>(`/api/commits/by-habit/${habitId}`)
+            .then((r) => r.data),
+};
+
+export const coachApi = {
+    run: (body: { mode: "review" | "ask"; question?: string; previousReview?: string }) =>
+        apiClient
+            .post<CoachResponse>("/api/coach", { ...body, tz: getUserTimezone() })
             .then((r) => r.data),
 };
 

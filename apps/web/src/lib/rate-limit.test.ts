@@ -8,6 +8,10 @@ describe("rate-limit policy", () => {
         expect(userOperationLimitConfig("commits")).toEqual({ capacity: 20, refillPerSecond: 20 / 60 });
     });
 
+    it("limits coach runs to 5 per hour", () => {
+        expect(userOperationLimitConfig("coach")).toEqual({ capacity: 5, refillPerSecond: 5 / 3600 });
+    });
+
     it("sets independent signup and login attempt limits", () => {
         expect(authLimitConfig("signup")).toEqual({ capacity: 5, refillPerSecond: 5 / 900 });
         expect(authLimitConfig("login")).toEqual({ capacity: 10, refillPerSecond: 10 / 900 });

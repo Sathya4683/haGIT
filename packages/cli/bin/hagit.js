@@ -16,7 +16,8 @@ const {
     statusCommand,
     resetCommand,
     pushCommand,
-    deleteHabitCommand
+    deleteHabitCommand,
+    coachCommand
 } = require('../commands');
 
 program
@@ -148,6 +149,21 @@ program
     .action(async () => {
         try {
             await pushCommand();
+        } catch (error) {
+            console.error(chalk.red(`Error: ${error.message}`));
+            process.exit(1);
+        }
+    });
+
+// hagit coach               — weekly review of your habits
+// hagit coach "<question>"  — ask the coach about your habits
+program
+    .command('coach [question...]')
+    .description('Get an AI review of your habits, or ask a question')
+    .option('-v, --verbose', 'Show which tools the coach used')
+    .action(async (question, options) => {
+        try {
+            await coachCommand(question.join(' ').trim(), options);
         } catch (error) {
             console.error(chalk.red(`Error: ${error.message}`));
             process.exit(1);

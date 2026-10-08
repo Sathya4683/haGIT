@@ -11,6 +11,7 @@ import { CommitList } from "@/components/dashboard/CommitList";
 import { HabitSummaryCards } from "@/components/dashboard/HabitSummaryCards";
 import { PushCommitModal } from "@/components/dashboard/PushCommitModal";
 import { DayCommitsPanel } from "@/components/dashboard/DayCommitsPanel";
+import { CoachChat } from "@/components/dashboard/CoachChat";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NewHabitModal } from "@/components/sidebar/NewHabitModal";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -362,6 +363,8 @@ export default function DashboardPage() {
                     onCancel={() => setPendingDeleteHabit(null)}
                 />
             )}
+
+            <CoachChat />
         </div>
     );
 }

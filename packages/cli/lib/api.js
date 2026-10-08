@@ -102,6 +102,24 @@ class ApiClient {
             throw new Error(error.response?.data?.error || 'Failed to fetch commits');
         }
     }
+
+    async coach(body) {
+        try {
+            const response = await axios.post(
+                `${this.baseURL}/api/coach`,
+                body,
+                { headers: this.getHeaders(), timeout: 70000 }
+            );
+            return response.data;
+        } catch (error) {
+            const status = error.response?.status;
+            if (status === 404) throw new Error('This haGIT server does not have the coach yet');
+            if (status === 429 && error.response.data?.retryAfter) {
+                throw new Error(`Too many coach requests. Try again in ${error.response.data.retryAfter}s`);
+            }
+            throw new Error(error.response?.data?.error || 'Coach request failed');
+        }
+    }
 }
 
 module.exports = new ApiClient();

@@ -110,6 +110,8 @@ The CLI provides a Git-like interface for managing habits.
 | `hagit status`               | Display workspace state              | `hagit status`                  |
 | `hagit reset`                | Clear unpushed commits               | `hagit reset`                   |
 | `hagit push`                 | Sync commits with server             | `hagit push`                    |
+| `hagit coach`                | AI review of your week (see [Habit Coach](#habit-coach)) | `hagit coach -v`  |
+| `hagit coach "<question>"`   | Ask the coach about your habits      | `hagit coach "why do I skip gym?"` |
 
 ---
 
@@ -312,6 +314,84 @@ scripts
 ```
 
 This folder can be loaded via the Chrome extensions page.
+
+---
+
+# Habit Coach
+
+An optional LLM coach that reads your habit history and writes a weekly review with wins, watch-outs and up to three small next steps. You can also ask it questions like "why do I keep missing gym?".
+
+* **Dashboard:** the chat button in the bottom-right corner of the dashboard.
+* **CLI:** `hagit coach` for a review, `hagit coach "<question>"` to ask, `-v` to see which tools it used.
+
+### How it works
+
+The coach is a Gemini function-calling agent (`packages/coach-core`). It isn't handed a dump of your data. It calls habit tools to fetch what it needs, then writes the answer.
+
+```mermaid
+flowchart LR
+    C[Dashboard / hagit coach] --> R[POST /api/coach]
+    R --> A[Agent loop]
+    A <-->|function calls| G[Gemini]
+    A --> T[Habit tools]
+    T --> DB[(PostgreSQL)]
+```
+
+* Streaks, consistency and trends are computed in code (`stats.ts`). The model only interprets them, so it can't invent numbers.
+* The coach only gets read-only tools, and they're scoped to the signed-in user.
+* A run makes at most 5 Gemini calls, and each user gets 5 runs per hour.
+
+### Enabling it
+
+Add a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) to `apps/web/.env`:
+
+```
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-flash-lite-latest   # optional
+```
+
+Without the key, `POST /api/coach` returns 503 and the chat says the coach isn't enabled. Nothing else changes.
+
+> **Privacy:** on the free tier, Google may use the prompts you send (which include habit names and check-in messages) to improve its products. Make sure your users are OK with that before enabling the coach on a shared deployment.
+
+---
+
+# MCP Server
+
+`hagit-mcp` (`packages/mcp`) exposes the same habit tools over the [Model Context Protocol](https://modelcontextprotocol.io). That lets AI assistants such as Claude Code, Claude Desktop, Gemini CLI or Cursor read your habit stats, log check-ins and create habits.
+
+| Tool              | What it does                                                          |
+| ----------------- | --------------------------------------------------------------------- |
+| `list_habits`     | Habits with total check-ins and last activity                         |
+| `get_habit_stats` | Streaks, consistency %, weekly trend, weekday and time-of-day patterns |
+| `get_checkins`    | Recent check-ins with their messages                                  |
+| `search_checkins` | Keyword search over check-in messages                                 |
+| `log_checkin`     | Log a check-in for an existing habit                                  |
+| `create_habit`    | Create a new habit (refuses duplicates, ignoring case)                |
+
+It reuses the token saved by `hagit login`, so log in with the CLI first. Then build it and register it with your client:
+
+```
+npm run build -w hagit-mcp
+claude mcp add hagit -- node /absolute/path/to/haGIT/packages/mcp/dist/index.js
+```
+
+For Claude Desktop, Gemini CLI or Cursor, add it to the client's `mcpServers` config:
+
+```json
+{
+  "mcpServers": {
+    "hagit": {
+      "command": "node",
+      "args": ["/absolute/path/to/haGIT/packages/mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+Optional environment variables:
+* `HAGIT_API_URL` points the server at another API, e.g. `http://localhost:3000`.
+* `HAGIT_TZ` sets the timezone used for days and hours. It defaults to the machine's timezone.
 
 ---
 
