@@ -9,7 +9,9 @@
 
 import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai";
 import type { Content, GenerateContentParameters, GenerateContentResponse, Part } from "@google/genai";
-import { readOnlyTools, runTool, toFunctionDeclarations, type ToolContext } from "./tools";
+import { readOnlyTools, runTool, toFunctionDeclarations, toolsFor, type ToolContext } from "./tools";
+import { sanitizeCitations } from "./citations";
+import type { KbSnippet, KnowledgeBase } from "./data";
 import { dayKey } from "./stats";
 import { COACH_SYSTEM_PROMPT, buildUserMessage, type CoachRequest } from "./prompts";
 
@@ -38,11 +40,19 @@ export interface ToolCallRecord {
     error?: string;
 }
 
+export interface CoachSource {
+    articleId: number;
+    slug: string;
+    title: string;
+}
+
 export interface CoachResult {
     reply: string;
     toolCalls: ToolCallRecord[];
     model: string;
     steps: number;
+    /** Knowledge-base articles cited in the reply, in order of first citation. */
+    sources: CoachSource[];
 }
 
 /** Real Gemini client. One SDK-level retry covers transient 429/5xx blips. */
@@ -78,17 +88,29 @@ export async function runCoach(opts: {
     maxSteps?: number;
     signal?: AbortSignal;
 }): Promise<CoachResult> {
-    const { generate, ctx, request, signal } = opts;
+    const { generate, request, signal } = opts;
     const model = opts.model || DEFAULT_MODEL;
     const maxSteps = opts.maxSteps ?? MAX_STEPS;
     const toolCalls: ToolCallRecord[] = [];
+
+    // Every passage the model sees (pre-retrieved or via the search tool) may be cited.
+    const passages = new Map<number, KbSnippet>();
+    request.library?.forEach((p) => passages.set(p.articleId, p));
+    const kb: KnowledgeBase | undefined = opts.ctx.kb && {
+        async search(query, o) {
+            const hits = await opts.ctx.kb!.search(query, o);
+            hits.forEach((h) => passages.set(h.articleId, h));
+            return hits;
+        },
+    };
+    const ctx: ToolContext = { ...opts.ctx, kb };
 
     // Every answer needs the habit list, so fetch it up front and save a round
     // trip. It's then left out of the model's tools: told it's already there,
     // Flash-Lite still called it again.
     const habits = await runTool(readOnlyTools, "list_habits", {}, ctx);
     toolCalls.push({ name: "list_habits", args: {} });
-    const tools = readOnlyTools.filter((t) => t.name !== "list_habits");
+    const tools = toolsFor(readOnlyTools, ctx).filter((t) => t.name !== "list_habits");
     const functionDeclarations = toFunctionDeclarations(tools);
 
     const today = dayKey(ctx.now ?? new Date(), ctx.tz);
@@ -115,9 +137,14 @@ export async function runCoach(opts: {
 
         const calls = response.functionCalls ?? [];
         if (calls.length === 0 || last) {
-            const reply = response.text?.trim();
-            if (!reply) throw new CoachError("empty", "The coach returned an empty answer. Try again.");
-            return { reply, toolCalls, model, steps: step };
+            const raw = response.text?.trim();
+            if (!raw) throw new CoachError("empty", "The coach returned an empty answer. Try again.");
+            const { text: reply, cited } = sanitizeCitations(raw, new Set(passages.keys()));
+            const sources = cited.map((id) => {
+                const p = passages.get(id)!;
+                return { articleId: id, slug: p.slug, title: p.title };
+            });
+            return { reply, toolCalls, model, steps: step, sources };
         }
 
         // Send back the model's own turn untouched — it carries the thought

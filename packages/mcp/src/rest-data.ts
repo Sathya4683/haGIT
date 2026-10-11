@@ -1,6 +1,7 @@
 // HabitData over the existing haGIT REST API, authenticated with the CLI token.
 
-import type { CheckIn, HabitData } from "@hagit/coach-core";
+import type { CheckIn, HabitData, KbSnippet, KnowledgeBase } from "@hagit/coach-core";
+import { version } from "../package.json";
 import { loadConfig } from "./config";
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -23,7 +24,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     try {
         res = await fetch(`${apiUrl}${path}`, {
             ...init,
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+                "X-Hagit-Client": `hagit-mcp/${version}`,
+            },
             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
     } catch {
@@ -95,6 +100,17 @@ export function restHabitData(): HabitData {
             const habit = await request<ApiHabit>("/api/habits", { method: "POST", body: JSON.stringify({ name }) });
             cache.clear();
             return { name: habit.name, createdAt: habit.createdAt, commitCount: habit.commitCount };
+        },
+    };
+}
+
+/** Knowledge-base search over the public /api/kb/search endpoint. */
+export function restKnowledgeBase(): KnowledgeBase {
+    return {
+        async search(query, opts) {
+            const params = new URLSearchParams({ q: query, limit: String(opts?.limit ?? 3) });
+            const { results } = await request<{ results: KbSnippet[] }>(`/api/kb/search?${params}`);
+            return results;
         },
     };
 }

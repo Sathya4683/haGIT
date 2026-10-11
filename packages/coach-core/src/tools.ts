@@ -6,13 +6,16 @@
 // runTool() always validates them before running.
 
 import { z } from "zod";
-import type { CheckIn, HabitData, HabitSummary } from "./data";
+import type { CheckIn, HabitData, HabitSummary, KnowledgeBase } from "./data";
+import { kbTag } from "./citations";
 import { computeHabitStats, dayKey, addDays, localTime, weekdayOf } from "./stats";
 
 export interface ToolContext {
     data: HabitData;
     tz: string;
     now?: Date;
+    /** Optional: enables search_knowledge_base. */
+    kb?: KnowledgeBase;
 }
 
 export interface HabitTool {
@@ -22,6 +25,8 @@ export interface HabitTool {
     inputSchema: z.ZodObject;
     /** false = changes data. The coach only ever gets read-only tools. */
     readOnly: boolean;
+    /** Context the tool needs beyond habit data; tools are hidden when it is missing. */
+    requires?: "kb";
     run(args: unknown, ctx: ToolContext): Promise<unknown>;
 }
 
@@ -31,6 +36,7 @@ function defineTool<S extends z.ZodObject>(tool: {
     description: string;
     inputSchema: S;
     readOnly: boolean;
+    requires?: "kb";
     run(args: z.infer<S>, ctx: ToolContext): Promise<unknown>;
 }): HabitTool {
     return tool as unknown as HabitTool;
@@ -197,8 +203,49 @@ const createHabit = defineTool({
     },
 });
 
-export const habitTools: HabitTool[] = [listHabits, getHabitStats, getCheckIns, searchCheckIns, logCheckIn, createHabit];
+const searchKnowledgeBase = defineTool({
+    name: "search_knowledge_base",
+    title: "Search the habit knowledge base",
+    description:
+        "Search haGIT's curated, research-backed articles on building habits (missed days, weak weekdays, " +
+        "motivation, planning, environment, streaks). Returns short passages tagged like KB12. Use for general " +
+        "advice, never as a source of the user's own data, and cite each passage you use with its tag.",
+    inputSchema: z.object({
+        query: z.string().trim().min(3).max(300).describe("The user's situation in plain words, e.g. \"keeps skipping workouts on Fridays\"."),
+        limit: z.number().int().min(1).max(6).default(3).describe("Maximum passages to return."),
+    }),
+    readOnly: true,
+    requires: "kb",
+    async run({ query, limit }, { kb }) {
+        if (!kb) throw new Error("The knowledge base isn't available here.");
+        const hits = await kb.search(query, { limit });
+        return {
+            results: hits.map((h) => ({
+                tag: kbTag(h.articleId),
+                title: h.title,
+                section: h.heading,
+                excerpt: h.content.slice(0, 700),
+                ...(h.url && { url: h.url }),
+            })),
+        };
+    },
+});
+
+export const habitTools: HabitTool[] = [
+    listHabits,
+    getHabitStats,
+    getCheckIns,
+    searchCheckIns,
+    logCheckIn,
+    createHabit,
+    searchKnowledgeBase,
+];
 export const readOnlyTools: HabitTool[] = habitTools.filter((t) => t.readOnly);
+
+/** Tools whose requirements the context satisfies. */
+export function toolsFor(tools: HabitTool[], ctx: Pick<ToolContext, "kb">): HabitTool[] {
+    return tools.filter((t) => t.requires !== "kb" || Boolean(ctx.kb));
+}
 
 /** Validate `args` against the tool's schema, then run it. Throws on unknown tool or bad args. */
 export async function runTool(tools: HabitTool[], name: string, args: unknown, ctx: ToolContext): Promise<unknown> {
