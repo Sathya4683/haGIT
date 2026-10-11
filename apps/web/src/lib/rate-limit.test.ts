@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
-import { authLimitConfig, clientIpKey, rateLimitExceeded, userOperationLimitConfig } from "./rate-limit";
+import {
+    authLimitConfig,
+    clientIpKey,
+    consumeMemory,
+    rateLimitExceeded,
+    redisProvider,
+    userOperationLimitConfig,
+} from "./rate-limit";
 
 describe("rate-limit policy", () => {
     it("shares a 20 per minute policy across habit and commit operations", () => {
@@ -41,5 +48,26 @@ describe("rate-limit policy", () => {
             error: "Too many requests. Please try again later.",
             retryAfter: 12,
         });
+    });
+
+    it("prefers Upstash when its credentials exist and no provider is set", () => {
+        const saved = { ...process.env };
+        delete process.env.REDIS_PROVIDER;
+        process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+        process.env.UPSTASH_REDIS_REST_TOKEN = "t";
+        expect(redisProvider()).toBe("upstash");
+        process.env.REDIS_PROVIDER = "local";
+        expect(redisProvider()).toBe("local");
+        process.env = saved;
+    });
+
+    it("enforces the in-process fallback bucket", () => {
+        const options = { capacity: 2, refillPerSecond: 1 };
+        const t = 1_000_000;
+        expect(consumeMemory("fallback-test", options, t).allowed).toBe(true);
+        expect(consumeMemory("fallback-test", options, t).allowed).toBe(true);
+        const denied = consumeMemory("fallback-test", options, t);
+        expect(denied).toEqual({ allowed: false, remaining: 0, retryAfter: 1 });
+        expect(consumeMemory("fallback-test", options, t + 1000).allowed).toBe(true);
     });
 });

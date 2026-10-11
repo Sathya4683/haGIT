@@ -18,6 +18,8 @@ model User {
   name          String?
   image         String?
   emailVerified DateTime?
+  // Bumped to revoke every API token issued to this user.
+  tokenVersion  Int       @default(0)
   createdAt     DateTime  @default(now())
 
   commits  Commit[]
@@ -44,10 +46,13 @@ model Commit {
   timestamp DateTime
   habitId   Int
   userId    Int
+  // Client-generated id (CLI / extension) that makes pushes safe to retry.
+  clientId  String?
   createdAt DateTime @default(now())
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, clientId])
   @@index([userId])
   @@index([habitId])
   @@index([userId, timestamp])

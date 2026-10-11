@@ -104,13 +104,8 @@ export default function DashboardPage() {
         setSelectedDate(date);
         setLoadingDayCommits(true);
         try {
-            const all = await commitsApi.list({ limit: 500 });
-            const hn = selectedHabitId !== null ? habits.find((h) => h.id === selectedHabitId)?.name : null;
-            const tz = getUserTimezone();
-            setDayCommits(all.filter((c) =>
-                localDayKey(c.timestamp, tz) === date &&
-                (hn == null ? true : c.habitName === hn)
-            ));
+            const hn = selectedHabitId !== null ? habits.find((h) => h.id === selectedHabitId)?.name : undefined;
+            setDayCommits(await commitsApi.onDay(date, hn));
         } finally { setLoadingDayCommits(false); }
     }, [selectedDate, selectedHabitId, habits]);
 
@@ -169,9 +164,12 @@ export default function DashboardPage() {
     };
 
     const totalCommits = commitsByHabit.reduce((s, c) => s + c.commitCount, 0);
+    // Last 7 local calendar days, including today.
     const weekCommits = (() => {
-        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-        return recentCommits.filter((c) => new Date(c.timestamp) >= weekAgo).length;
+        const tz = getUserTimezone();
+        const days = new Set<string>();
+        for (let i = 0; i < 7; i++) days.add(localDayKey(new Date(Date.now() - i * 86_400_000), tz));
+        return aggregated.reduce((sum, d) => (days.has(d.date) ? sum + d.count : sum), 0);
     })();
 
     return (

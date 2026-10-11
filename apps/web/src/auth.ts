@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/auth";
 
 function prismaUserId(id: string) {
     const value = Number(id);
@@ -36,13 +37,13 @@ function intIdPrismaAdapter(): Adapter {
     return {
         ...adapter,
         async createUser(data) {
-            return withStringUserId(await adapter.createUser!(data));
+            return withStringUserId(await adapter.createUser!({ ...data, email: normalizeEmail(data.email) }));
         },
         async getUser(id) {
             return withStringUserIdOrNull(await adapter.getUser!(adapterIdAsPrismaInt(id)));
         },
         async getUserByEmail(email) {
-            return withStringUserIdOrNull(await adapter.getUserByEmail!(email));
+            return withStringUserIdOrNull(await adapter.getUserByEmail!(normalizeEmail(email)));
         },
         async getUserByAccount(account) {
             return withStringUserIdOrNull(await adapter.getUserByAccount!(account));
@@ -74,6 +75,8 @@ declare module "next-auth" {
         user: {
             userId: number;
         } & DefaultSession["user"];
+        /** User.tokenVersion at sign-in; a mismatch means the session was revoked. */
+        tokenVersion: number;
     }
 }
 
@@ -95,19 +98,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             issuer: "https://github.com/login/oauth",
         }),
     ],
+    events: {
+        // Email/password signup does not verify the address, and OAuth providers are allowed to
+        // link to an existing account by email. Without this, someone could register a victim's
+        // email with a password before the victim ever signs in with Google/GitHub, and keep
+        // access afterwards. The first successful OAuth link proves ownership of the address, so
+        // drop any unverified password and revoke previously issued API tokens.
+        async linkAccount({ user }) {
+            const id = Number(user.id);
+            if (!Number.isSafeInteger(id)) return;
+            await prisma.user.updateMany({
+                where: { id, emailVerified: null, password: { not: null } },
+                data: { password: null, emailVerified: new Date(), tokenVersion: { increment: 1 } },
+            });
+            await prisma.user.updateMany({
+                where: { id, emailVerified: null },
+                data: { emailVerified: new Date() },
+            });
+        },
+    },
     callbacks: {
         async jwt({ token, user }) {
             // The adapter exposes Auth.js IDs as strings; the app JWT uses Int IDs.
             if (user) {
-                (token as unknown as { userId: number }).userId = Number(user.id);
+                const userId = Number(user.id);
+                // Read after the linkAccount event, which may have just bumped the version.
+                const row = await prisma.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } });
+                (token as unknown as { userId: number; tv: number }).userId = userId;
+                (token as unknown as { userId: number; tv: number }).tv = row?.tokenVersion ?? 0;
             }
             return token;
         },
         async session({ session, token }) {
-            const userId = (token as unknown as { userId?: number }).userId;
+            const { userId, tv } = token as unknown as { userId?: number; tv?: number };
             if (typeof userId === "number" && Number.isFinite(userId)) {
                 session.user.userId = userId;
             }
+            session.tokenVersion = tv ?? 0;
             return session;
         },
     },

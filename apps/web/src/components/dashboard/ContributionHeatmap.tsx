@@ -31,7 +31,9 @@ export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
     const [yearDropdown, setYearDropdown] = useState(false);
 
     const years = useMemo(() => {
-        const all = new Set(data.map((d) => new Date(d.date).getFullYear()));
+        // Read the year from the key itself: new Date("yyyy-MM-dd") is UTC midnight, which is
+        // the previous day (and year, on Jan 1) for users west of UTC.
+        const all = new Set(data.map((d) => Number(d.date.slice(0, 4))));
         all.add(currentYear);
         return Array.from(all).sort((a, b) => b - a);
     }, [data, currentYear]);

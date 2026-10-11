@@ -43,4 +43,13 @@ describe("checkRateLimit Redis behavior", () => {
         await expect(checkRateLimit("user:42:commits", { capacity: 20, refillPerSecond: 20 / 60 }))
             .resolves.toEqual({ allowed: true, remaining: 20, retryAfter: 0 });
     }, 2_000);
+
+    it("falls back to an in-process bucket for fail-closed policies", async () => {
+        evalMock.mockRejectedValue(new Error("connection refused"));
+        const options = { capacity: 1, refillPerSecond: 1 / 60 };
+        const first = await checkRateLimit("ip:abc:login", options, { failClosed: true });
+        const second = await checkRateLimit("ip:abc:login", options, { failClosed: true });
+        expect(first.allowed).toBe(true);
+        expect(second.allowed).toBe(false);
+    });
 });

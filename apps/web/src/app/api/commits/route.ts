@@ -1,30 +1,34 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, serverError } from "@/lib/auth";
+
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { rateLimits } from "@/lib/rate-limit";
+import { zonedDayRange } from "@/lib/datetime";
+import { withRoute } from "@/server/http/withRoute";
+import { dateKey, timezone } from "@/server/http/schemas";
 
-// GET /api/commits?habitName=&limit=
-export async function GET(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-        const { searchParams } = new URL(req.url);
-        const habitName = searchParams.get("habitName");
-        const limit = parseInt(searchParams.get("limit") || "50", 10);
+const query = z.object({
+    habitName: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(1000).catch(50),
+    /** Local calendar day (with `tz`) to return commits for. */
+    date: dateKey.optional(),
+    tz: timezone,
+});
 
-        const where: Record<string, unknown> = { userId: payload.userId };
-        if (habitName) {
-            const habit = await prisma.habit.findUnique({
-                where: { userId_name: { userId: payload.userId, name: habitName } },
-            });
-            if (habit) where.habitId = habit.id;
-            else return Response.json([]);
-        }
-
+// GET /api/commits?habitName=&limit=&date=YYYY-MM-DD&tz=
+export const GET = withRoute(
+    { name: "GET /api/commits", auth: "user", query, rateLimit: ({ user }) => rateLimits.userRead(user.userId) },
+    async ({ user, query }) => {
+        const range = query.date ? zonedDayRange(query.date, query.tz) : null;
         const commits = await prisma.commit.findMany({
-            where,
+            where: {
+                userId: user.userId,
+                ...(query.habitName && { habit: { name: query.habitName } }),
+                ...(range && { timestamp: { gte: range.start, lt: range.end } }),
+            },
             include: { habit: { select: { name: true } } },
             orderBy: { timestamp: "desc" },
-            take: Math.min(limit, 1000),
+            take: query.limit,
         });
 
         return Response.json(
@@ -34,11 +38,7 @@ export async function GET(req: NextRequest) {
                 message: c.message,
                 timestamp: c.timestamp.toISOString(),
                 synced: true,
-            }))
+            })),
         );
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[GET /api/commits]", e);
-        return serverError();
-    }
-}
+    },
+);

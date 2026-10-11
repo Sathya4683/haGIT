@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Settings, GitCommitHorizontal, Plus, X } from "lucide-react";
 import type { Habit } from "@hagit/types";
@@ -20,7 +21,11 @@ export function TopNav({
     habits, selectedHabitId, onSelectHabit,
     onCreateHabit, onDeleteHabit, onPushCommit, onOpenSettings, loading,
 }: TopNavProps) {
-    const { theme, setTheme } = useTheme();
+    const { resolvedTheme, setTheme } = useTheme();
+    // The theme is only known on the client; render a neutral icon until mounted.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isDark = mounted && resolvedTheme === "dark";
 
     return (
         <header className="sticky top-0 z-30 bg-[rgb(var(--paper))] border-b-2 border-[rgb(var(--border))]">
@@ -46,11 +51,11 @@ export function TopNav({
                     </button>
 
                     <button
-                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        onClick={() => setTheme(isDark ? "light" : "dark")}
                         className="w-8 h-8 flex items-center justify-center border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))] transition-colors"
                         aria-label="Toggle theme"
                     >
-                        {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+                        {isDark ? <Sun size={13} /> : <Moon size={13} />}
                     </button>
 
                     <button

@@ -1,16 +1,16 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, serverError } from "@/lib/auth";
+
 import { prisma } from "@/lib/prisma";
+import { rateLimits } from "@/lib/rate-limit";
+import { withRoute } from "@/server/http/withRoute";
 
 // GET /api/commits/by-habit
 // Returns [{ habitId, habitName, commitCount }]
-export async function GET(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-
+export const GET = withRoute(
+    { name: "GET /api/commits/by-habit", auth: "user", rateLimit: ({ user }) => rateLimits.userRead(user.userId) },
+    async ({ user }) => {
         const habits = await prisma.habit.findMany({
-            where: { userId: payload.userId },
+            where: { userId: user.userId },
             include: { _count: { select: { commits: true } } },
             orderBy: { createdAt: "asc" },
         });
@@ -20,11 +20,7 @@ export async function GET(req: NextRequest) {
                 habitId: h.id,
                 habitName: h.name,
                 commitCount: h._count.commits,
-            }))
+            })),
         );
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[GET /api/commits/by-habit]", e);
-        return serverError();
-    }
-}
+    },
+);

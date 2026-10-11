@@ -28,10 +28,41 @@ apiClient.interceptors.request.use((config) => {
     return config;
 });
 
+let bridging: Promise<string | null> | null = null;
+
+/**
+ * OAuth users can recover from an expired or rotated API token by minting a new one from their
+ * Auth.js session. Concurrent 401s share one bridge request.
+ */
+function refreshFromSession(): Promise<string | null> {
+    bridging ??= fetch("/api/auth/session-token")
+        .then(async (res) => {
+            if (!res.ok) return null;
+            const data = (await res.json()) as AuthUser;
+            localStorage.setItem("hagit_token", data.token);
+            localStorage.setItem("hagit_user", JSON.stringify(data));
+            return data.token;
+        })
+        .catch(() => null)
+        .finally(() => {
+            bridging = null;
+        });
+    return bridging;
+}
+
 apiClient.interceptors.response.use(
     (res) => res,
-    (error) => {
+    async (error) => {
+        const config = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
         if (error.response?.status === 401 && typeof window !== "undefined") {
+            if (config && !config._retried) {
+                config._retried = true;
+                const token = await refreshFromSession();
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                    return apiClient(config);
+                }
+            }
             localStorage.removeItem("hagit_token");
             localStorage.removeItem("hagit_user");
             window.location.href = "/auth/login";
@@ -63,6 +94,11 @@ export const habitsApi = {
 export const commitsApi = {
     list: (params?: { habitName?: string; limit?: number }) =>
         apiClient.get<Commit[]>("/api/commits", { params }).then((r) => r.data),
+    /** Commits on one local calendar day (yyyy-MM-dd) in the browser's timezone. */
+    onDay: (date: string, habitName?: string) =>
+        apiClient
+            .get<Commit[]>("/api/commits", { params: { date, tz: getUserTimezone(), habitName, limit: 1000 } })
+            .then((r) => r.data),
     aggregated: () =>
         apiClient
             .get<AggregatedCommit[]>("/api/commits/aggregated", {
@@ -95,4 +131,7 @@ export const coachApi = {
 export const accountApi = {
     delete: () =>
         apiClient.delete<{ success: boolean }>("/api/account").then((r) => r.data),
+    /** Revokes every issued API token and returns a fresh one. */
+    rotateToken: () =>
+        apiClient.post<AuthUser>("/api/account/token").then((r) => r.data),
 };

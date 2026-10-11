@@ -1,15 +1,20 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, badRequest, serverError } from "@/lib/auth";
+
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
+import { rateLimits } from "@/lib/rate-limit";
+import { withRoute } from "@/server/http/withRoute";
+import { notFoundError } from "@/server/http/errors";
+import { habitName } from "@/server/http/schemas";
+
+const nameBody = z.object({ name: habitName });
 
 // GET /api/habits
-export async function GET(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
+export const GET = withRoute(
+    { name: "GET /api/habits", auth: "user", rateLimit: ({ user }) => rateLimits.userRead(user.userId) },
+    async ({ user }) => {
         const habits = await prisma.habit.findMany({
-            where: { userId: payload.userId },
+            where: { userId: user.userId },
             include: { _count: { select: { commits: true } } },
             orderBy: { createdAt: "asc" },
         });
@@ -19,81 +24,40 @@ export async function GET(req: NextRequest) {
                 name: h.name,
                 createdAt: h.createdAt.toISOString(),
                 commitCount: h._count.commits,
-            }))
+            })),
         );
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[GET /api/habits]", e);
-        return serverError();
-    }
-}
+    },
+);
 
 // POST /api/habits
-export async function POST(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-        const rateLimit = await limitUserOperation(payload.userId, "habits");
-        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
-        const { name } = await req.json();
-        if (!name?.trim()) return badRequest("Habit name is required.");
+export const POST = withRoute(
+    {
+        name: "POST /api/habits",
+        auth: "user",
+        body: nameBody,
+        rateLimit: ({ user }) => rateLimits.userWrite(user.userId, "habits"),
+        conflictMessage: "A habit with this name already exists.",
+    },
+    async ({ user, body }) => {
+        const habit = await prisma.habit.create({ data: { name: body.name, userId: user.userId } });
+        return Response.json(
+            { id: habit.id, name: habit.name, createdAt: habit.createdAt.toISOString(), commitCount: 0 },
+            { status: 201 },
+        );
+    },
+);
 
-        const existing = await prisma.habit.findUnique({
-            where: { userId_name: { userId: payload.userId, name: name.trim() } },
-        });
-        if (existing) return badRequest("A habit with this name already exists.");
-
-        const habit = await prisma.habit.create({
-            data: { name: name.trim(), userId: payload.userId },
-        });
-        return Response.json({ id: habit.id, name: habit.name, createdAt: habit.createdAt.toISOString(), commitCount: 0 }, { status: 201 });
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[POST /api/habits]", e);
-        return serverError();
-    }
-}
-
-// DELETE /api/habits
-export async function DELETE(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-        const rateLimit = await limitUserOperation(payload.userId, "habits");
-        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
-        const { name } = await req.json();
-
-        if (!name?.trim()) {
-            return badRequest("Habit name is required.");
-        }
-
-        const habit = await prisma.habit.findUnique({
-            where: {
-                userId_name: {
-                    userId: payload.userId,
-                    name: name.trim(),
-                },
-            },
-        });
-
-        if (!habit) {
-            return badRequest("Habit not found.");
-        }
-
-        await prisma.habit.delete({
-            where: {
-                userId_name: {
-                    userId: payload.userId,
-                    name: name.trim(),
-                },
-            },
-        });
-
-        return Response.json({
-            success: true,
-            message: `Habit "${name}" deleted.`,
-        });
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[DELETE /api/habits]", e);
-        return serverError();
-    }
-}
+// DELETE /api/habits  (by name; used by the CLI)
+export const DELETE = withRoute(
+    {
+        name: "DELETE /api/habits",
+        auth: "user",
+        body: nameBody,
+        rateLimit: ({ user }) => rateLimits.userWrite(user.userId, "habits"),
+    },
+    async ({ user, body }) => {
+        const { count } = await prisma.habit.deleteMany({ where: { userId: user.userId, name: body.name } });
+        if (count === 0) throw notFoundError("Habit not found.");
+        return Response.json({ success: true, message: `Habit "${body.name}" deleted.` });
+    },
+);

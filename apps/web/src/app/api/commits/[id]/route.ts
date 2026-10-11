@@ -1,26 +1,23 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, notFound, serverError } from "@/lib/auth";
+
 import { prisma } from "@/lib/prisma";
-import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
+import { rateLimits } from "@/lib/rate-limit";
+import { withRoute } from "@/server/http/withRoute";
+import { notFoundError } from "@/server/http/errors";
+import { idParam } from "@/server/http/schemas";
 
 // DELETE /api/commits/:id
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-    try {
-        const payload = requireAuth(req);
-        const rateLimit = await limitUserOperation(payload.userId, "commits");
-        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
-        const id = parseInt(params.id, 10);
-        if (isNaN(id)) return notFound();
-
-        const commit = await prisma.commit.findFirst({ where: { id, userId: payload.userId } });
-        if (!commit) return notFound("Commit not found.");
-
-        await prisma.commit.delete({ where: { id } });
+export const DELETE = withRoute<"user", undefined, undefined, { id: string }>(
+    {
+        name: "DELETE /api/commits/:id",
+        auth: "user",
+        rateLimit: ({ user }) => rateLimits.userWrite(user.userId, "commits"),
+    },
+    async ({ user, params }) => {
+        const id = idParam.safeParse(params.id);
+        if (!id.success) throw notFoundError("Commit not found.");
+        const { count } = await prisma.commit.deleteMany({ where: { id: id.data, userId: user.userId } });
+        if (count === 0) throw notFoundError("Commit not found.");
         return Response.json({ success: true });
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[DELETE /api/commits/:id]", e);
-        return serverError();
-    }
-}
+    },
+);

@@ -34,13 +34,13 @@ export function SettingsDrawer({ open, onClose }: Props) {
         }
     };
 
-    const handleLogout = () => { logout(); router.push("/auth/login"); };
+    const handleLogout = async () => { await logout(); router.push("/auth/login"); };
 
     const handleDeleteAccount = async () => {
         setDeletingAccount(true);
         try {
             await accountApi.delete();
-            logout();
+            await logout();
             toast.success("Account deleted.");
             router.push("/auth/signup");
         } catch {

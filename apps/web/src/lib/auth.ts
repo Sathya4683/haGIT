@@ -1,22 +1,39 @@
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
 
-const SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
+const DEV_SECRET = "dev-secret-change-in-production";
+
+/** Resolved lazily so `next build` can import route modules without runtime secrets. */
+function secret(): string {
+    const value = process.env.JWT_SECRET;
+    if (value) return value;
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("JWT_SECRET must be set in production");
+    }
+    return DEV_SECRET;
+}
 
 export interface JwtPayload {
     userId: number;
     email: string;
+    /** Token version; tokens are revoked by bumping User.tokenVersion. Absent on legacy tokens (= 0). */
+    tv?: number;
 }
 
 export function signToken(payload: JwtPayload): string {
-    return jwt.sign(payload, SECRET, { expiresIn: "90d" });
+    return jwt.sign(payload, secret(), { expiresIn: "90d" });
 }
 
 export function verifyToken(token: string): JwtPayload {
-    return jwt.verify(token, SECRET) as JwtPayload;
+    return jwt.verify(token, secret()) as JwtPayload;
 }
 
-/** Extract and verify Bearer token from request. Throws on failure. */
+/** Normalises an email address for storage and lookup. */
+export function normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+}
+
+/** Extract and verify the Bearer token signature. Throws "UNAUTHORIZED" on failure. */
 export function requireAuth(req: NextRequest): JwtPayload {
     const auth = req.headers.get("authorization") || "";
     if (!auth.startsWith("Bearer ")) {
