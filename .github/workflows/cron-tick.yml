@@ -1,0 +1,20 @@
+name: Run scheduler tick
+
+# Manual fallback for the hourly QStash schedule: runs one /api/jobs/tick against production.
+# Deliveries are idempotent, so running it extra times is safe.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/jobs/tick
+        run: |
+          curl -fsS --max-time 90 -X POST "${{ vars.APP_URL }}/api/jobs/tick" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
