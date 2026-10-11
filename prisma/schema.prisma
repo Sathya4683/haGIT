@@ -11,6 +11,12 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum Role {
+  USER
+  EDITOR
+  ADMIN
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   email         String    @unique
@@ -18,14 +24,29 @@ model User {
   name          String?
   image         String?
   emailVerified DateTime?
+  role          Role      @default(USER)
   // Bumped to revoke every API token issued to this user.
   tokenVersion  Int       @default(0)
   createdAt     DateTime  @default(now())
 
-  commits  Commit[]
-  habits   Habit[]
-  accounts Account[]
-  sessions Session[]
+  commits   Commit[]
+  habits    Habit[]
+  accounts  Account[]
+  sessions  Session[]
+  auditLogs AuditLog[]
+}
+
+// Record of privileged actions taken in the admin console.
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }
 
 model Habit {

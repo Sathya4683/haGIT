@@ -11,6 +11,7 @@ const { checkPolicy, authenticateUser } = vi.hoisted(() => ({
 vi.mock("@vercel/functions", () => ({ waitUntil: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ checkPolicy }));
 vi.mock("./auth", () => ({ authenticateUser }));
+vi.mock("@/server/admin/session", () => ({ getAdminActor: vi.fn() }));
 
 import { withRoute } from "./withRoute";
 import { HttpError, unauthorizedError } from "./errors";

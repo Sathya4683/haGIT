@@ -7,12 +7,19 @@ import { Prisma } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 import { ZodError, type ZodType } from "zod";
 import { checkPolicy, type RateLimitPolicy } from "@/lib/rate-limit";
+import { can, isAdminHost, type Permission } from "@/lib/permissions";
+import { getAdminActor, type AdminActor } from "@/server/admin/session";
 import { flushLogs, getLogger, type Logger } from "@/server/obs/logger";
 import { authenticateUser, type AuthUser } from "./auth";
-import { HttpError } from "./errors";
+import { forbiddenError, HttpError, notFoundError, unauthorizedError } from "./errors";
 
-type AuthMode = "none" | "user" | "optional";
-type UserFor<A extends AuthMode> = A extends "user" ? AuthUser : AuthUser | null;
+/**
+ * - user:     Bearer API token (dashboard, CLI, extension, MCP)
+ * - optional: Bearer token if present
+ * - admin:    Auth.js session cookie of an admin-console user, plus `permission`
+ */
+type AuthMode = "none" | "user" | "optional" | "admin";
+type UserFor<A extends AuthMode> = A extends "user" ? AuthUser : A extends "admin" ? AdminActor : AuthUser | null;
 
 export interface RouteContext<A extends AuthMode, B, Q, P> {
     req: NextRequest;
@@ -30,6 +37,8 @@ export interface RouteOptions<A extends AuthMode, B, Q, P> {
     /** Stable route label used in logs and metrics, e.g. "POST /api/habits". */
     name: string;
     auth?: A;
+    /** Required permission for `auth: "admin"` routes. */
+    permission?: Permission;
     body?: ZodType<B>;
     query?: ZodType<Q>;
     /** Evaluated after authentication and validation, so malformed requests don't spend quota. */
@@ -89,11 +98,20 @@ export function withRoute<
         let response: Response;
 
         try {
-            let user: AuthUser | null = null;
+            let user: AuthUser | AdminActor | null = null;
             if (opts.auth === "user") {
                 user = await authenticateUser(req);
             } else if (opts.auth === "optional" && req.headers.has("authorization")) {
                 user = await authenticateUser(req).catch(() => null);
+            } else if (opts.auth === "admin") {
+                // Admin APIs are only served on the admin host when one is configured.
+                if (process.env.ADMIN_HOST && !isAdminHost(req.headers.get("host"))) throw notFoundError();
+                const actor = await getAdminActor();
+                if (!actor) throw unauthorizedError();
+                if (opts.permission && !can(actor.role, opts.permission)) {
+                    throw forbiddenError("You don't have permission to do that.");
+                }
+                user = actor;
             }
             userId = user?.userId;
 

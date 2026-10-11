@@ -112,7 +112,6 @@ services:
       SMTP_PORT: "1025"
       SMTP_SECURE: "false"
       NTFY_BASE_URL: http://ntfy
-      AUTH_URL: http://localhost:3000
       WATCHPACK_POLLING: "true"
     ports:
       - "3000:3000"
