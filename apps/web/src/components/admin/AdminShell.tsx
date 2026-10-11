@@ -29,10 +29,13 @@ export function AdminShell({ base, email, role, nav, children }: Props) {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
 
-    const isActive = (href: string) => {
+    // The most specific matching item is active (e.g. /kb/playground, not /kb as well).
+    const matches = (href: string) => {
         const full = `${base}${href}` || "/";
         return href === "" ? pathname === (base || "/") : pathname === full || pathname.startsWith(`${full}/`);
     };
+    const activeHref = nav.filter((item) => matches(item.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    const isActive = (href: string) => href === activeHref;
 
     const navList = (
         <nav className="flex flex-col gap-1">

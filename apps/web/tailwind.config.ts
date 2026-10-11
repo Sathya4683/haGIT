@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
   darkMode: "class",
@@ -49,6 +50,36 @@ const config: Config = {
         "bounce-in":      "bounceIn 0.3s ease-out",
         "shimmer":        "shimmer 1.5s infinite",
       },
+      typography: {
+        // `prose-kb`: knowledge-base articles, coloured from the theme variables.
+        kb: {
+          css: {
+            "--tw-prose-body": "rgb(var(--ink))",
+            "--tw-prose-headings": "rgb(var(--ink))",
+            "--tw-prose-lead": "rgb(var(--ink-muted))",
+            "--tw-prose-links": "rgb(var(--ink))",
+            "--tw-prose-bold": "rgb(var(--ink))",
+            "--tw-prose-counters": "rgb(var(--ink-muted))",
+            "--tw-prose-bullets": "rgb(var(--brand))",
+            "--tw-prose-hr": "rgb(var(--border) / 0.3)",
+            "--tw-prose-quotes": "rgb(var(--ink))",
+            "--tw-prose-quote-borders": "rgb(var(--brand))",
+            "--tw-prose-captions": "rgb(var(--ink-muted))",
+            "--tw-prose-code": "rgb(var(--ink))",
+            "--tw-prose-th-borders": "rgb(var(--border))",
+            "--tw-prose-td-borders": "rgb(var(--border) / 0.3)",
+            fontSize: "15px",
+            lineHeight: "1.75",
+            a: { textDecorationColor: "rgb(var(--brand))", textDecorationThickness: "2px", textUnderlineOffset: "3px" },
+            "h2, h3": { fontWeight: "900", letterSpacing: "-0.01em" },
+            blockquote: { fontStyle: "normal", fontWeight: "600", background: "rgb(var(--paper-alt))", padding: "0.5em 1em" },
+            "blockquote p:first-of-type::before, blockquote p:last-of-type::after": { content: "none" },
+            table: { fontSize: "14px" },
+            thead: { borderBottomWidth: "2px" },
+            code: { fontWeight: "600" },
+          },
+        },
+      },
       keyframes: {
         fadeIn: {
           "0%":   { opacity: "0" },
@@ -74,6 +105,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 };
 export default config;

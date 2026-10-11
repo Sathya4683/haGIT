@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { habitsApi, commitsApi } from "@/lib/api";
 import type { Habit, HabitDetail, Commit } from "@hagit/types";
 import type { AggregatedCommit, CommitByHabit } from "@/types";
@@ -362,7 +362,9 @@ export default function DashboardPage() {
                 />
             )}
 
-            <CoachChat />
+            <Suspense fallback={null}>
+                <CoachChat />
+            </Suspense>
         </div>
     );
 }

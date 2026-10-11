@@ -14,8 +14,21 @@ export interface CommitByHabit {
     commitCount: number;
 }
 
+export interface CoachSource {
+    articleId: number;
+    slug: string;
+    title: string;
+}
+
 export interface CoachResponse {
     reply: string;
     toolCalls: { name: string; args: Record<string, unknown> }[];
     model: string;
+    /** Knowledge-base articles cited inline as [KB<articleId>]. */
+    sources?: CoachSource[];
+}
+
+export interface CoachTurn {
+    role: "user" | "coach";
+    text: string;
 }

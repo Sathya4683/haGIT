@@ -4,6 +4,7 @@ import type {
     AggregatedCommit,
     CommitByHabit,
     CoachResponse,
+    CoachTurn,
 } from "@/types";
 import { getUserTimezone } from "@/lib/datetime";
 
@@ -122,7 +123,7 @@ export const commitsApi = {
 };
 
 export const coachApi = {
-    run: (body: { mode: "review" | "ask"; question?: string; previousReview?: string }) =>
+    run: (body: { mode: "review" | "ask"; question?: string; previousReview?: string; history?: CoachTurn[] }) =>
         apiClient
             .post<CoachResponse>("/api/coach", { ...body, tz: getUserTimezone() })
             .then((r) => r.data),
