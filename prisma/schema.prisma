@@ -29,11 +29,12 @@ model User {
   tokenVersion  Int       @default(0)
   createdAt     DateTime  @default(now())
 
-  commits   Commit[]
-  habits    Habit[]
-  accounts  Account[]
-  sessions  Session[]
-  auditLogs AuditLog[]
+  commits    Commit[]
+  habits     Habit[]
+  accounts   Account[]
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  kbArticles KbArticle[]
 }
 
 // Record of privileged actions taken in the admin console.
@@ -118,4 +119,59 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ── Knowledge base ─────────────────────────────────────────────────────────
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ArticleOrigin {
+  // Synced from content/kb/*.md in the repository
+  REPO
+  // Created or edited in the admin console (never overwritten by repo sync)
+  ADMIN
+}
+
+model KbArticle {
+  id             Int           @id @default(autoincrement())
+  slug           String        @unique
+  title          String
+  summary        String
+  body           String        @db.Text
+  tags           String[]
+  sources        Json          @default("[]")
+  status         ArticleStatus @default(DRAFT)
+  origin         ArticleOrigin @default(ADMIN)
+  readingMinutes Int           @default(1)
+  // Hash of the indexed content; unchanged articles are not re-embedded.
+  contentHash    String        @default("")
+  authorId       Int?
+  publishedAt    DateTime?
+  indexedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  chunks         KbChunk[]
+
+  @@index([status])
+}
+
+// Retrieval units. Only published articles have chunks. At this scale an exact
+// (sequential) vector scan is fast and exact; add an HNSW index past ~20k chunks.
+model KbChunk {
+  id          Int                         @id @default(autoincrement())
+  articleId   Int
+  ordinal     Int
+  heading     String
+  content     String                      @db.Text
+  tokenCount  Int
+  contentHash String
+  // bge-small-en-v1.5, CLS pooling, L2-normalised
+  embedding   Unsupported("vector(384)")
+  article     KbArticle                   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, ordinal])
 }

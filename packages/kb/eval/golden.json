@@ -1,0 +1,216 @@
+[
+    {
+        "query": "How many days does it take to form a new habit?",
+        "expected": [
+            "how-long-habits-take"
+        ]
+    },
+    {
+        "query": "It's been three weeks and running still feels hard, is something wrong with me?",
+        "expected": [
+            "how-long-habits-take"
+        ]
+    },
+    {
+        "query": "Is 21 days enough to make something automatic?",
+        "expected": [
+            "how-long-habits-take"
+        ]
+    },
+    {
+        "query": "How do I make a concrete plan so I actually start studying?",
+        "expected": [
+            "implementation-intentions",
+            "plan-for-weak-days-woop"
+        ]
+    },
+    {
+        "query": "if-then planning for exercise",
+        "expected": [
+            "implementation-intentions",
+            "plan-for-weak-days-woop"
+        ]
+    },
+    {
+        "query": "How can I attach a new habit to my morning coffee routine?",
+        "expected": [
+            "habit-stacking"
+        ]
+    },
+    {
+        "query": "I keep forgetting to floss, how do I remember?",
+        "expected": [
+            "habit-stacking",
+            "design-your-environment",
+            "same-time-same-place"
+        ]
+    },
+    {
+        "query": "My goal feels too big, how small should I start?",
+        "expected": [
+            "start-tiny"
+        ]
+    },
+    {
+        "query": "two minute rule",
+        "expected": [
+            "start-tiny"
+        ]
+    },
+    {
+        "query": "I missed a day, did I ruin my habit?",
+        "expected": [
+            "never-miss-twice",
+            "streaks-and-the-what-the-hell-effect"
+        ]
+    },
+    {
+        "query": "I broke my streak yesterday and now I don't feel like continuing",
+        "expected": [
+            "never-miss-twice",
+            "streaks-and-the-what-the-hell-effect"
+        ]
+    },
+    {
+        "query": "How do I stop scrolling my phone in bed?",
+        "expected": [
+            "design-your-environment"
+        ]
+    },
+    {
+        "query": "make bad habits harder to do",
+        "expected": [
+            "design-your-environment"
+        ]
+    },
+    {
+        "query": "Should I work out at the same time every day?",
+        "expected": [
+            "same-time-same-place"
+        ]
+    },
+    {
+        "query": "my schedule is irregular, how do I keep a routine?",
+        "expected": [
+            "same-time-same-place",
+            "habit-stacking"
+        ]
+    },
+    {
+        "query": "How can I make the gym more enjoyable so I go more often?",
+        "expected": [
+            "temptation-bundling"
+        ]
+    },
+    {
+        "query": "only listen to my favourite podcast while doing chores",
+        "expected": [
+            "temptation-bundling"
+        ]
+    },
+    {
+        "query": "Does tracking my habits actually help?",
+        "expected": [
+            "tracking-works"
+        ]
+    },
+    {
+        "query": "Is it worth sharing my progress with friends?",
+        "expected": [
+            "tracking-works",
+            "commitment-and-accountability"
+        ]
+    },
+    {
+        "query": "How do I become the kind of person who reads every day?",
+        "expected": [
+            "identity-based-habits"
+        ]
+    },
+    {
+        "query": "Should I wait until Monday to restart my routine?",
+        "expected": [
+            "fresh-start-effect"
+        ]
+    },
+    {
+        "query": "New month, I want to restart my habits after a bad slump",
+        "expected": [
+            "fresh-start-effect",
+            "never-miss-twice"
+        ]
+    },
+    {
+        "query": "I have no willpower, how do disciplined people do it?",
+        "expected": [
+            "habits-beat-willpower"
+        ]
+    },
+    {
+        "query": "self-control versus routines",
+        "expected": [
+            "habits-beat-willpower"
+        ]
+    },
+    {
+        "query": "Do streaks help motivation?",
+        "expected": [
+            "streaks-and-the-what-the-hell-effect",
+            "never-miss-twice"
+        ]
+    },
+    {
+        "query": "Should I bet money that I'll keep my habit?",
+        "expected": [
+            "commitment-and-accountability"
+        ]
+    },
+    {
+        "query": "finding an accountability partner",
+        "expected": [
+            "commitment-and-accountability"
+        ]
+    },
+    {
+        "query": "I always skip workouts on Fridays because I'm tired",
+        "expected": [
+            "plan-for-weak-days-woop",
+            "implementation-intentions"
+        ]
+    },
+    {
+        "query": "what obstacles should I plan for",
+        "expected": [
+            "plan-for-weak-days-woop"
+        ]
+    },
+    {
+        "query": "I keep skipping the gym on weekends",
+        "expected": [
+            "plan-for-weak-days-woop",
+            "implementation-intentions",
+            "same-time-same-place",
+            "never-miss-twice"
+        ]
+    },
+    {
+        "query": "What is the capital of France?",
+        "expected": []
+    },
+    {
+        "query": "Write me a python function to sort a list",
+        "expected": []
+    },
+    {
+        "query": "what's the weather like today",
+        "expected": []
+    },
+    {
+        "query": "Who won the football world cup in 2022?",
+        "expected": []
+    },
+    {
+        "query": "Explain quantum computing in simple terms",
+        "expected": []
+    }
+]
