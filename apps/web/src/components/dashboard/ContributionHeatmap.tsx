@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format, startOfYear, endOfYear, eachDayOfInterval, getDay, getMonth } from "date-fns";
 import type { AggregatedCommit } from "@/types";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
     const [year, setYear] = useState(currentYear);
     const [tooltip, setTooltip] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
     const [yearDropdown, setYearDropdown] = useState(false);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     const years = useMemo(() => {
         // Read the year from the key itself: new Date("yyyy-MM-dd") is UTC midnight, which is
@@ -64,6 +65,15 @@ export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
         });
         return { weeks: weeksArr, monthLabels: monthLabelMap };
     }, [year]);
+
+    // On narrow screens the year overflows; show the current week rather than January.
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        if (year !== currentYear) { el.scrollLeft = 0; return; }
+        const weekOfYear = Math.floor((Date.now() - new Date(year, 0, 1).getTime()) / (7 * 86_400_000));
+        el.scrollLeft = Math.max(0, weekOfYear * (CELL + GAP) - el.clientWidth + 6 * (CELL + GAP));
+    }, [year, currentYear]);
 
     return (
         <div className="space-y-4">
@@ -103,7 +113,7 @@ export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto scrollbar-thin pb-2">
+            <div ref={scrollRef} className="overflow-x-auto scrollbar-thin pb-2">
                 <div className="inline-flex gap-0">
                     <div className="flex flex-col justify-around mr-1.5" style={{ paddingTop: 16 }}>
                         {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -135,20 +145,26 @@ export function ContributionHeatmap({ data, onDayClick, selectedDate }: Props) {
                                         const dateStr = format(day, "yyyy-MM-dd");
                                         const count = countMap[dateStr] || 0;
                                         const isSelected = selectedDate === dateStr;
+                                        const showTooltip = (el: HTMLElement) => {
+                                            const r = el.getBoundingClientRect();
+                                            setTooltip({ date: dateStr, count, x: r.left, y: r.top });
+                                        };
                                         return (
-                                            <div
+                                            <button
                                                 key={di}
+                                                type="button"
                                                 style={{ width: CELL, height: CELL }}
+                                                aria-label={`${count} commit${count !== 1 ? "s" : ""} on ${format(day, "MMMM d, yyyy")}`}
+                                                aria-pressed={isSelected}
                                                 className={cn(
-                                                    "cursor-pointer transition-all duration-100 hover:scale-125",
+                                                    "block p-0 cursor-pointer transition-all duration-100 hover:scale-125 focus-visible:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--brand))]",
                                                     getColorClass(count),
                                                     isSelected && "ring-2 ring-ink dark:ring-white ring-offset-1 scale-125"
                                                 )}
-                                                onMouseEnter={(e) => {
-                                                    const r = (e.target as HTMLElement).getBoundingClientRect();
-                                                    setTooltip({ date: dateStr, count, x: r.left, y: r.top });
-                                                }}
+                                                onMouseEnter={(e) => showTooltip(e.currentTarget)}
                                                 onMouseLeave={() => setTooltip(null)}
+                                                onFocus={(e) => showTooltip(e.currentTarget)}
+                                                onBlur={() => setTooltip(null)}
                                                 onClick={() => onDayClick?.(dateStr)}
                                             />
                                         );

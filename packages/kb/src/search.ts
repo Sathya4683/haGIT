@@ -114,7 +114,7 @@ export async function explainSearch(db: Db, query: string, opts: SearchOptions =
     });
     const final = await searchKnowledgeBase(db, query, opts);
     const selected = new Set(final.hits.map((h) => h.chunkId));
-    const rows: ExplainRow[] = all.hits.map((h) => ({
+    const rows: ExplainRow[] = [...all.hits].sort((a, b) => b.score - a.score).map((h) => ({
         chunkId: h.chunkId,
         slug: h.slug,
         title: h.title,

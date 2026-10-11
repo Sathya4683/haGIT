@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Settings, GitCommitHorizontal, Plus, X } from "lucide-react";
+import Link from "next/link";
+import { Sun, Moon, Settings, GitCommitHorizontal, Plus, X, BookOpen } from "lucide-react";
 import type { Habit } from "@hagit/types";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,15 @@ export function TopNav({
                         <span className="hidden sm:inline">Push commit</span>
                         <span className="sm:hidden">Push</span>
                     </button>
+
+                    <Link
+                        href="/kb"
+                        className="h-8 px-2.5 flex items-center gap-1.5 text-xs font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))] transition-colors"
+                        aria-label="Habit library"
+                    >
+                        <BookOpen size={13} />
+                        <span className="hidden md:inline">Library</span>
+                    </Link>
 
                     <button
                         onClick={() => setTheme(isDark ? "light" : "dark")}

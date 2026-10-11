@@ -1,28 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --paper:     250 250 247;
-    --paper-alt: 241 240 235;
-    --ink:       13 13 13;
-    --ink-muted: 90 89 85;
-    --border:    13 13 13;
-    --brand:     22 163 74;
-    --card-bg:   255 255 255;
-  }
-  .dark {
-    --paper:     17 17 16;
-    --paper-alt: 24 24 22;
-    --ink:       245 244 240;
-    --ink-muted: 150 148 142;
-    --border:    245 244 240;
-    --brand:     74 222 128;
-    --card-bg:   28 28 26;
-  }
+  /* Colour variables (--paper, --ink, --brand-*, …) are generated per palette and mode by
+     src/lib/palettes.ts and injected in the root layout. */
 
   * { box-sizing: border-box; }
 
@@ -34,7 +16,7 @@
   body {
     background: rgb(var(--paper));
     color: rgb(var(--ink));
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans), 'Inter', system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.5;
   }

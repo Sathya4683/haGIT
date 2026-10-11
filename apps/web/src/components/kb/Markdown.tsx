@@ -31,8 +31,8 @@ export function Markdown({ source, className }: { source: string; className?: st
     );
 }
 
-/** Drops a leading "# Title" line that duplicates the page heading. */
-export function stripLeadingTitle(body: string, title: string) {
-    const match = body.match(/^#\s+(.+)\n+/);
-    return match && match[1].trim().toLowerCase() === title.trim().toLowerCase() ? body.slice(match[0].length) : body;
+/** Drops a leading "# Heading" line: the page already shows the article title. */
+export function stripLeadingTitle(body: string) {
+    const match = body.match(/^\s*#\s+.+\n+/);
+    return match ? body.slice(match[0].length) : body;
 }

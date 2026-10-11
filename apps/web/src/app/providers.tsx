@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { useAuthStore } from "@/store/authStore";
+import { PaletteProvider } from "@/components/theme/PaletteProvider";
 
 function AuthHydrator({ children }: { children: React.ReactNode }) {
     const hydrate = useAuthStore((s) => s.hydrate);
@@ -16,13 +17,15 @@ function AuthHydrator({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-            <SessionProvider>
-                <AuthHydrator>
-                    {children}
-                    <Toaster position="top-right" richColors closeButton />
-                </AuthHydrator>
-            </SessionProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <PaletteProvider>
+                <SessionProvider>
+                    <AuthHydrator>
+                        {children}
+                        <Toaster position="top-right" richColors closeButton />
+                    </AuthHydrator>
+                </SessionProvider>
+            </PaletteProvider>
         </ThemeProvider>
     );
 }

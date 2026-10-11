@@ -20,10 +20,15 @@ export function KbLibrary({ articles }: { articles: ArticleCard[] }) {
     const [results, setResults] = useState<Result[] | null>(null);
     const [searching, setSearching] = useState(false);
 
+    // Only tags shared by several articles are useful filters; cap the list to stay scannable.
     const tags = useMemo(() => {
         const counts = new Map<string, number>();
         for (const a of articles) for (const t of a.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
-        return Array.from(counts).sort((a, b) => b[1] - a[1]).map(([t]) => t);
+        return Array.from(counts)
+            .filter(([, n]) => n >= 2)
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+            .slice(0, 12)
+            .map(([t]) => t);
     }, [articles]);
 
     useEffect(() => {

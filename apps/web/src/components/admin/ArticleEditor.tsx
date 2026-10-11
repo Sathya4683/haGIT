@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bold, Code, Heading2, Heading3, Italic, Link2, List, ListOrdered, Quote, Trash2, Upload, RefreshCw } from "lucide-react";
-import { Markdown } from "@/components/kb/Markdown";
+import { Markdown, stripLeadingTitle } from "@/components/kb/Markdown";
 import { cn } from "@/lib/utils";
 
 export interface EditableArticle {
@@ -248,7 +248,7 @@ export function ArticleEditor({ base, initial }: { base: "" | "/admin"; initial?
                     {view !== "write" && (
                         <div className="card-flat p-5 min-h-[28rem] overflow-auto">
                             {a.title && <h1 className="text-2xl font-black tracking-tight mb-4">{a.title}</h1>}
-                            {a.body.trim() ? <Markdown source={a.body} /> : <p className="text-sm text-[rgb(var(--ink-muted))]">Nothing to preview yet.</p>}
+                            {a.body.trim() ? <Markdown source={stripLeadingTitle(a.body)} /> : <p className="text-sm text-[rgb(var(--ink-muted))]">Nothing to preview yet.</p>}
                         </div>
                     )}
                 </div>

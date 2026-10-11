@@ -26,7 +26,7 @@ export default async function KbArticlePage({ params }: Props) {
     const article = await getPublishedArticle(params.slug);
     if (!article) notFound();
 
-    const body = stripLeadingTitle(article.body, article.title);
+    const body = stripLeadingTitle(article.body);
     const toc = tableOfContents(body);
     const sources = (article.sources as unknown as Source[]) ?? [];
     const related = await relatedArticles(article.id);

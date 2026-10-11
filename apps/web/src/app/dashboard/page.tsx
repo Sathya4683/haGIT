@@ -14,6 +14,9 @@ import { DayCommitsPanel } from "@/components/dashboard/DayCommitsPanel";
 import { CoachChat } from "@/components/dashboard/CoachChat";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NewHabitModal } from "@/components/sidebar/NewHabitModal";
+import { TodayStrip } from "@/components/dashboard/TodayStrip";
+import { OnboardingCard } from "@/components/dashboard/OnboardingCard";
+import { PreferencesSync } from "@/components/dashboard/PreferencesSync";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/api-errors";
@@ -161,6 +164,7 @@ export default function DashboardPage() {
         setHabits((p) => [...p, habit]);
         setShowNewHabit(false);
         toast.success(`"${habit.name}" created.`);
+        commitsApi.byHabit().then(setCommitsByHabit);
     };
 
     const totalCommits = commitsByHabit.reduce((s, c) => s + c.commitCount, 0);
@@ -181,6 +185,7 @@ export default function DashboardPage() {
                 onOpenSettings={() => setShowSettings(true)} loading={loadingOverview}
             />
             <SettingsDrawer open={showSettings} onClose={() => setShowSettings(false)} />
+            <PreferencesSync />
 
             {/* ── OVERVIEW ──────────────────────────────────────────────────────── */}
             {selectedHabitId === null && (
@@ -212,8 +217,19 @@ export default function DashboardPage() {
                     <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
                         <div className="flex flex-col lg:flex-row gap-8 lg:gap-10">
 
-                            {/* Left column — heatmap + commits */}
+                            {/* Left column — today, heatmap, commits */}
                             <div className="flex-1 min-w-0 space-y-8">
+                                {!loadingOverview && (
+                                    <OnboardingCard
+                                        habitCount={habits.length} commitCount={totalCommits}
+                                        onCreateHabit={() => setShowNewHabit(true)} onPushCommit={() => setShowPush(true)}
+                                        onOpenSettings={() => setShowSettings(true)}
+                                    />
+                                )}
+                                <TodayStrip
+                                    habits={commitsByHabit} loading={loadingOverview}
+                                    onCommitted={handlePushSuccess} onCreateHabit={() => setShowNewHabit(true)}
+                                />
                                 {/* Heatmap card */}
                                 <div className="card p-5 space-y-4">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-[rgb(var(--ink-muted))]">
@@ -283,13 +299,25 @@ export default function DashboardPage() {
                                             <span className="text-xs font-bold text-brand-600 dark:text-brand-400">Active</span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setShowClearCommits(true)}
-                                        className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                                    >
-                                        <Trash2 size={11} />
-                                        Clear commits
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setShowClearCommits(true)}
+                                            className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                        >
+                                            <Trash2 size={11} />
+                                            Clear commits
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const h = habits.find((x) => x.id === habitDetail.id);
+                                                if (h) setPendingDeleteHabit(h);
+                                            }}
+                                            className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 border-2 border-ink transition-all"
+                                        >
+                                            <Trash2 size={11} />
+                                            Delete habit
+                                        </button>
+                                    </div>
                                 </div>
                             ) : null}
                         </div>

@@ -12,6 +12,26 @@ export interface CommitByHabit {
     habitId: number;
     habitName: string;
     commitCount: number;
+    currentStreak: number;
+    longestStreak: number;
+    committedToday: boolean;
+    lastCommitAt: string | null;
+}
+
+export interface NtfySubscription {
+    topic: string;
+    webUrl: string;
+    appUrl: string;
+}
+
+export interface Preferences {
+    email: string;
+    timezone: string;
+    palette: string;
+    nudgeEnabled: boolean;
+    nudgeHour: number;
+    weeklyReportEnabled: boolean;
+    ntfy: NtfySubscription | null;
 }
 
 export interface CoachSource {

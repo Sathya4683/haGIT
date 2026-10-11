@@ -35,6 +35,24 @@ model User {
   sessions   Session[]
   auditLogs  AuditLog[]
   kbArticles KbArticle[]
+  preference UserPreference?
+}
+
+// Per-user settings, including what the scheduled jobs need (timezone, notification choices).
+model UserPreference {
+  userId              Int      @id
+  // IANA timezone used for nightly reminders and weekly reports.
+  timezone            String   @default("UTC")
+  // Colour palette for the dashboard and reports.
+  palette             String   @default("classic")
+  nudgeEnabled        Boolean  @default(false)
+  // Local hour (0-23) after which the nightly reminder is sent.
+  nudgeHour           Int      @default(21)
+  // Unguessable ntfy topic; ntfy.sh topics are public, so this acts as a shared secret.
+  ntfyTopic           String?  @unique
+  weeklyReportEnabled Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Record of privileged actions taken in the admin console.

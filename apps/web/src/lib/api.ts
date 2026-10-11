@@ -5,6 +5,7 @@ import type {
     CommitByHabit,
     CoachResponse,
     CoachTurn,
+    Preferences,
 } from "@/types";
 import { getUserTimezone } from "@/lib/datetime";
 
@@ -107,7 +108,9 @@ export const commitsApi = {
             })
             .then((r) => r.data),
     byHabit: () =>
-        apiClient.get<CommitByHabit[]>("/api/commits/by-habit").then((r) => r.data),
+        apiClient
+            .get<CommitByHabit[]>("/api/commits/by-habit", { params: { tz: getUserTimezone() } })
+            .then((r) => r.data),
     push: (habitName: string, message: string) =>
         apiClient
             .post("/api/commits/push", {
@@ -135,4 +138,10 @@ export const accountApi = {
     /** Revokes every issued API token and returns a fresh one. */
     rotateToken: () =>
         apiClient.post<AuthUser>("/api/account/token").then((r) => r.data),
+};
+
+export const preferencesApi = {
+    get: () => apiClient.get<Preferences>("/api/me/preferences").then((r) => r.data),
+    update: (patch: Partial<Omit<Preferences, "email" | "ntfy">> & { regenerateTopic?: true }) =>
+        apiClient.patch<Preferences>("/api/me/preferences", patch).then((r) => r.data),
 };

@@ -11,34 +11,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  "#f0fdf4",
-          100: "#dcfce7",
-          200: "#bbf7d0",
-          300: "#86efac",
-          400: "#4ade80",
-          500: "#22c55e",
-          600: "#16a34a",
-          700: "#15803d",
-          800: "#166534",
-          900: "#14532d",
-        },
-        ink: "#0d0d0d",
-        paper: "#fafaf7",
+        // Palette-driven (see src/lib/palettes.ts); alpha modifiers like bg-brand-500/25 work.
+        brand: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((k) => [k, `rgb(var(--brand-${k}) / <alpha-value>)`]),
+        ),
+        ink: "rgb(var(--ink-fixed) / <alpha-value>)",
+        paper: "rgb(var(--paper) / <alpha-value>)",
         "paper-dark": "#111110",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
       },
       borderWidth: {
         "3": "3px",
       },
       boxShadow: {
-        "brutal":    "4px 4px 0px 0px #0d0d0d",
-        "brutal-sm": "2px 2px 0px 0px #0d0d0d",
-        "brutal-lg": "6px 6px 0px 0px #0d0d0d",
-        "brutal-green": "4px 4px 0px 0px #15803d",
+        "brutal":    "4px 4px 0px 0px rgb(var(--ink-fixed))",
+        "brutal-sm": "2px 2px 0px 0px rgb(var(--ink-fixed))",
+        "brutal-lg": "6px 6px 0px 0px rgb(var(--ink-fixed))",
+        "brutal-green": "4px 4px 0px 0px rgb(var(--brand-700))",
         "brutal-red":   "4px 4px 0px 0px #991b1b",
         "brutal-dark":  "4px 4px 0px 0px rgba(255,255,255,0.15)",
         "brutal-sm-dark": "2px 2px 0px 0px rgba(255,255,255,0.12)",

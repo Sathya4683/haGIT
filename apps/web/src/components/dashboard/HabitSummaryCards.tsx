@@ -1,5 +1,6 @@
 "use client";
 import type { CommitByHabit } from "@/types";
+import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props { data: CommitByHabit[]; loading?: boolean; onSelect?: (id: number) => void; }
@@ -64,6 +65,14 @@ export function HabitSummaryCards({ data, loading, onSelect }: Props) {
                             )}>
                                 {item.commitCount}
                             </span>
+                        </div>
+
+                        <div className={cn("mt-1.5 flex items-center gap-3 text-[11px] font-bold", isFirst ? "text-white/80" : "text-[rgb(var(--ink-muted))]")}>
+                            <span className="flex items-center gap-1" title="Current streak (days)">
+                                <Flame size={11} /> {item.currentStreak}d
+                            </span>
+                            <span title="Longest streak (days)">best {item.longestStreak}d</span>
+                            {item.committedToday && <span>✓ today</span>}
                         </div>
 
                         {/* Proportional bar */}
