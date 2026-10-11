@@ -125,6 +125,18 @@ export function consumeMemory(key: string, options: BucketOptions, now = Date.no
     return { allowed: false, remaining: 0, retryAfter: Math.ceil((1 - tokens) / refillPerMs / 1000) };
 }
 
+/** Round-trip check used by /api/health. */
+export async function pingRedis(): Promise<void> {
+    if (redisProvider() === "upstash") {
+        const url = process.env.UPSTASH_REDIS_REST_URL;
+        const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+        if (!url || !token) throw new Error("Upstash Redis environment variables are missing");
+        await new UpstashRedis({ url, token }).ping();
+        return;
+    }
+    await (await getLocalRedis()).ping();
+}
+
 export async function checkRateLimit(
     key: string,
     options: BucketOptions,

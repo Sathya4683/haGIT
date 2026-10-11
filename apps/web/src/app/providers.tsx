@@ -6,6 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import { PaletteProvider } from "@/components/theme/PaletteProvider";
+import { WebTelemetry } from "@/components/telemetry/WebTelemetry";
 
 function AuthHydrator({ children }: { children: React.ReactNode }) {
     const hydrate = useAuthStore((s) => s.hydrate);
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     <AuthHydrator>
                         {children}
                         <Toaster position="top-right" richColors closeButton />
+                        <WebTelemetry />
                     </AuthHydrator>
                 </SessionProvider>
             </PaletteProvider>

@@ -17,6 +17,8 @@ async function initCommand() {
     console.log(chalk.cyan('\nNext steps:'));
     console.log('  1. Login to the web app and get your token');
     console.log('  2. Run: hagit login --token <YOUR_TOKEN>');
+    console.log(chalk.gray('\nhaGIT sends anonymous command timings and error messages (never habit data)'));
+    console.log(chalk.gray('to help fix bugs. Turn it off with: hagit telemetry off'));
 }
 
 // hagit login --token <TOKEN>

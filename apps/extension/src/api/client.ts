@@ -33,6 +33,27 @@ export function onUnauthorized(handler: () => void) {
     unauthorizedHandler = handler;
 }
 
+/** Reports server and network failures (not 4xx) to the app's telemetry endpoint. */
+function reportFailure(error: AxiosError) {
+    if (error.response && error.response.status < 500) return;
+    void storage.get<string>(STORAGE_KEYS.TOKEN).then((token) =>
+        fetch(`${baseURL}/api/telemetry`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }) },
+            body: JSON.stringify({
+                source: "extension",
+                version: CLIENT_HEADER.split("/")[1],
+                events: [{
+                    type: "error",
+                    name: error.response ? `HTTP ${error.response.status}` : error.code ?? "NetworkError",
+                    message: error.message,
+                    route: error.config?.url?.split("?")[0],
+                }],
+            }),
+        }).catch(() => undefined),
+    );
+}
+
 // Build Axios instance dynamically so it picks up baseURL changes
 function client(base = baseURL) {
     const ax = axios.create({
@@ -42,6 +63,7 @@ function client(base = baseURL) {
     });
     ax.interceptors.response.use(undefined, (error: AxiosError) => {
         if (error.response?.status === 401) unauthorizedHandler?.();
+        reportFailure(error);
         return Promise.reject(error);
     });
     return ax;
