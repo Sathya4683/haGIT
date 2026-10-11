@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { storage, STORAGE_KEYS } from "@/api/storage";
-import { authApi, setBaseURL, getBaseURL } from "@/api/client";
+import { applyBaseURL, authApi, onUnauthorized, setBaseURL } from "@/api/client";
 import type { AuthUser } from "@hagit/types";
 
 interface AuthState {
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 storage.get<string>(STORAGE_KEYS.BASE_URL),
             ]);
             const url = savedURL ?? "https://hagithub.vercel.app";
-            setBaseURL(url);
+            applyBaseURL(url);
             if (token && user) {
                 set({ user, baseURL: url, isLoading: false });
             } else {
@@ -68,3 +68,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     setError: (msg) => set({ error: msg }),
 }));
+
+// Any API call rejected with 401 means the stored token no longer works: sign out and say why.
+onUnauthorized(() => {
+    const { user, logout, setError } = useAuthStore.getState();
+    if (!user) return;
+    void logout().then(() => setError("Your token expired or was revoked. Paste a new one from the dashboard."));
+});

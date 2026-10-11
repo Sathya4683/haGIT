@@ -38,21 +38,14 @@ export const useCommitsStore = create<CommitsState>((set, get) => ({
     push: async (habitName: string, message: string) => {
         set({ pushing: true, error: null });
         try {
-            await commitsApi.push(habitName, message);
-            // Optimistic update: prepend to list
-            const optimistic: Commit = {
-                id: `opt-${Date.now()}`,
-                habitName,
-                message,
-                timestamp: new Date().toISOString(),
-                synced: true,
-            };
+            const commit = await commitsApi.push(habitName, message);
+            // The server returns the stored commit, so the list can be updated without a refetch.
             set((s) => ({
-                commits: [optimistic, ...s.commits].slice(0, 30),
+                commits: s.filter === null || s.filter === habitName
+                    ? [commit, ...s.commits].slice(0, 30)
+                    : s.commits,
                 pushing: false,
             }));
-            // Refetch to get real ID
-            setTimeout(() => get().fetch(habitName), 600);
         } catch (e) {
             set({ pushing: false, error: (e as Error).message });
             throw e;

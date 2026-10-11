@@ -109,7 +109,8 @@ program
     .option('-n, --number <count>', 'Number of commits to show', '10')
     .action(async (options) => {
         try {
-            await logCommand(parseInt(options.number));
+            const count = Number.parseInt(options.number, 10);
+            await logCommand(Number.isFinite(count) && count > 0 ? count : 10);
         } catch (error) {
             console.error(chalk.red(`Error: ${error.message}`));
             process.exit(1);

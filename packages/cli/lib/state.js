@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const DEFAULT_API_URL = 'https://hagithub.vercel.app';
+
 class StateManager {
     constructor() {
         this.hagitDir = path.join(os.homedir(), '.hagit');
@@ -11,6 +13,24 @@ class StateManager {
         this.coachLastPath = path.join(this.hagitDir, 'coach-last.json');
     }
 
+    // Write to a temp file and rename, so a crash mid-write never leaves a truncated file.
+    writeFileAtomic(filePath, contents) {
+        const tmp = `${filePath}.${process.pid}.tmp`;
+        fs.writeFileSync(tmp, contents);
+        fs.renameSync(tmp, filePath);
+    }
+
+    readJson(filePath, fallback) {
+        if (!fs.existsSync(filePath)) {
+            return fallback;
+        }
+        try {
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch {
+            throw new Error(`${filePath} is corrupted. Fix or delete it, then run: hagit init`);
+        }
+    }
+
     // Initialize ~/.hagit directory structure
     init() {
         if (!fs.existsSync(this.hagitDir)) {
@@ -18,11 +38,11 @@ class StateManager {
         }
 
         if (!fs.existsSync(this.configPath)) {
-            this.writeConfig({ token: null, userId: null, apiUrl: 'https://hagithub.vercel.app' });
+            this.writeConfig({ token: null, userId: null, apiUrl: DEFAULT_API_URL });
         }
 
         if (!fs.existsSync(this.headPath)) {
-            fs.writeFileSync(this.headPath, '');
+            this.writeFileAtomic(this.headPath, '');
         }
 
         if (!fs.existsSync(this.commitsPath)) {
@@ -42,21 +62,16 @@ class StateManager {
 
     // Config operations
     readConfig() {
-        if (!fs.existsSync(this.configPath)) {
-            return { token: null, userId: null, apiUrl: '' };
-        }
-        const data = fs.readFileSync(this.configPath, 'utf8');
-        return JSON.parse(data);
+        return this.readJson(this.configPath, { token: null, userId: null, apiUrl: '' });
     }
 
     writeConfig(config) {
-        fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
+        this.writeFileAtomic(this.configPath, JSON.stringify(config, null, 2));
     }
 
     updateConfig(updates) {
         const config = this.readConfig();
-        const newConfig = { ...config, ...updates };
-        this.writeConfig(newConfig);
+        this.writeConfig({ ...config, ...updates });
     }
 
     // HEAD operations (current habit)
@@ -69,20 +84,17 @@ class StateManager {
     }
 
     writeHEAD(habitName) {
-        fs.writeFileSync(this.headPath, habitName);
+        this.writeFileAtomic(this.headPath, habitName);
     }
 
     // Commits operations
     readCommits() {
-        if (!fs.existsSync(this.commitsPath)) {
-            return [];
-        }
-        const data = fs.readFileSync(this.commitsPath, 'utf8');
-        return JSON.parse(data);
+        const commits = this.readJson(this.commitsPath, []);
+        return Array.isArray(commits) ? commits : [];
     }
 
     writeCommits(commits) {
-        fs.writeFileSync(this.commitsPath, JSON.stringify(commits, null, 2));
+        this.writeFileAtomic(this.commitsPath, JSON.stringify(commits, null, 2));
     }
 
     addCommit(commit) {
@@ -95,14 +107,25 @@ class StateManager {
         this.writeCommits([]);
     }
 
+    // Remove only the given commits, keeping any recorded while a push was in flight.
+    removeCommits(ids) {
+        const pushed = new Set(ids);
+        this.writeCommits(this.readCommits().filter(c => !pushed.has(c.id)));
+    }
+
+    // Drop unpushed commits of a deleted habit so the next push doesn't recreate it.
+    removeCommitsForHabit(habitName) {
+        const remaining = this.readCommits().filter(c => c.habitName !== habitName);
+        this.writeCommits(remaining);
+    }
+
     // Get commits for current HEAD
     getCommitsForCurrentHabit() {
         const currentHabit = this.readHEAD();
         if (!currentHabit) {
             return [];
         }
-        const commits = this.readCommits();
-        return commits.filter(c => c.habitName === currentHabit);
+        return this.readCommits().filter(c => c.habitName === currentHabit);
     }
 
     // Get all unpushed commits
@@ -123,28 +146,25 @@ class StateManager {
     }
 
     writeLastReview(review) {
-        fs.writeFileSync(this.coachLastPath, JSON.stringify(review, null, 2));
+        this.writeFileAtomic(this.coachLastPath, JSON.stringify(review, null, 2));
     }
 
     // Authentication helpers
     isAuthenticated() {
         const config = this.readConfig();
-        return config.token && config.userId;
+        return Boolean(config.token && config.userId);
     }
 
     getAuthToken() {
-        const config = this.readConfig();
-        return config.token;
+        return this.readConfig().token;
     }
 
     getUserId() {
-        const config = this.readConfig();
-        return config.userId;
+        return this.readConfig().userId;
     }
 
     getApiUrl() {
-        const config = this.readConfig();
-        return config.apiUrl || 'https://hagithub.vercel.app';
+        return process.env.HAGIT_API_URL || this.readConfig().apiUrl || DEFAULT_API_URL;
     }
 }
 
