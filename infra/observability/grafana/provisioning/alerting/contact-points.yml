@@ -1,0 +1,26 @@
+# Alert delivery: email (Grafana SMTP settings) and an ntfy topic for push notifications.
+# ntfy renders Grafana's webhook JSON through its message templates (template=yes).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: hagit-alerts
+    receivers:
+      - uid: hagit-email
+        type: email
+        settings:
+          addresses: $ALERT_EMAIL
+          singleEmail: true
+      - uid: hagit-ntfy
+        type: webhook
+        settings:
+          url: $NTFY_ALERT_URL?template=yes&title=%7B%7B.title%7D%7D&message=%7B%7B.message%7D%7D
+          httpMethod: POST
+
+policies:
+  - orgId: 1
+    receiver: hagit-alerts
+    group_by: ["alertname"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
