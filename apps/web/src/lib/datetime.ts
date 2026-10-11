@@ -139,3 +139,14 @@ export function zonedStartOfDay(dateKey: string, tz: string): Date {
 export function zonedDayRange(dateKey: string, tz: string): { start: Date; end: Date } {
     return { start: zonedStartOfDay(dateKey, tz), end: zonedStartOfDay(addDaysToKey(dateKey, 1), tz) };
 }
+
+/** ISO-8601 week key ("2026-W41") of a yyyy-MM-dd date. Weeks start on Monday. */
+export function isoWeekKey(dateKey: string): string {
+    const [y, m, d] = dateKey.split("-").map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    const weekday = date.getUTCDay() || 7; // Monday = 1 … Sunday = 7
+    date.setUTCDate(date.getUTCDate() + 4 - weekday); // the week's Thursday decides its year
+    const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
+    const week = Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7);
+    return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}

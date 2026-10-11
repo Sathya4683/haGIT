@@ -13,6 +13,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Section } from "@/components/settings/Section";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { TokenSection } from "@/components/settings/TokenSection";
+import { NotificationsSection } from "@/components/settings/NotificationsSection";
+import { ReportSection } from "@/components/settings/ReportSection";
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -82,6 +84,10 @@ export function SettingsDrawer({ open, onClose }: Props) {
                     </Section>
 
                     <AppearanceSection />
+
+                    <NotificationsSection />
+
+                    <ReportSection />
 
                     <TokenSection />
                 </div>

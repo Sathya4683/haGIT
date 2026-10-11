@@ -145,3 +145,20 @@ export const preferencesApi = {
     update: (patch: Partial<Omit<Preferences, "email" | "ntfy">> & { regenerateTopic?: true }) =>
         apiClient.patch<Preferences>("/api/me/preferences", patch).then((r) => r.data),
 };
+
+export const notificationsApi = {
+    test: () => apiClient.post<{ sent: boolean }>("/api/notifications/test").then((r) => r.data),
+};
+
+export const reportsApi = {
+    /** Downloads the weekly report PDF through the authenticated client. */
+    downloadPdf: async (week: "current" | "last" = "current") => {
+        const res = await apiClient.get<Blob>("/api/reports/weekly", { params: { week }, responseType: "blob" });
+        const name = /filename="([^"]+)"/.exec(String(res.headers["content-disposition"] ?? ""))?.[1] ?? "hagit-weekly.pdf";
+        const url = URL.createObjectURL(res.data);
+        const a = Object.assign(document.createElement("a"), { href: url, download: name });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    },
+    emailPreview: () => apiClient.post<{ sent: boolean; to: string }>("/api/reports/weekly/email").then((r) => r.data),
+};

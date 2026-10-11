@@ -28,6 +28,7 @@ export function OnboardingCard({ habitCount, commitCount, onCreateHabit, onPushC
         { label: "Create your first habit", done: habitCount > 0, action: onCreateHabit },
         { label: "Push your first commit", done: commitCount > 0, action: onPushCommit },
         { label: "Connect the CLI or browser extension", done: false, action: onOpenSettings },
+        { label: "Turn on nightly reminders", done: false, action: onOpenSettings },
     ];
 
     const dismiss = () => {

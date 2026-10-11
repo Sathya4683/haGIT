@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToKey, localDayKey, zonedDayRange, zonedParts, zonedStartOfDay } from "./datetime";
+import { addDaysToKey, isoWeekKey, localDayKey, zonedDayRange, zonedParts, zonedStartOfDay } from "./datetime";
 
 describe("zoned calendar helpers", () => {
     it("finds local midnight for fixed and DST zones", () => {
@@ -33,5 +33,12 @@ describe("zoned calendar helpers", () => {
     it("adds days across month and year boundaries", () => {
         expect(addDaysToKey("2026-12-31", 1)).toBe("2027-01-01");
         expect(addDaysToKey("2026-03-01", -1)).toBe("2026-02-28");
+    });
+
+    it("computes ISO week keys, including year boundaries", () => {
+        expect(isoWeekKey("2026-10-05")).toBe("2026-W41");
+        expect(isoWeekKey("2026-10-11")).toBe("2026-W41");
+        expect(isoWeekKey("2021-01-03")).toBe("2020-W53");
+        expect(isoWeekKey("2024-12-30")).toBe("2025-W01");
     });
 });

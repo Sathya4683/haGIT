@@ -22,6 +22,7 @@
         "fetch-model": "node packages/kb/scripts/fetch-model.mjs",
         "kb:sync": "tsx packages/kb/scripts/sync.ts",
         "kb:reindex": "tsx packages/kb/scripts/sync.ts --force",
-        "kb:eval": "tsx packages/kb/scripts/eval.ts"
+        "kb:eval": "tsx packages/kb/scripts/eval.ts",
+        "jobs:schedule": "node scripts/jobs-schedule.mjs"
     }
 }

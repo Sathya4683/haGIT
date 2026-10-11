@@ -10,7 +10,17 @@ const localEmbeddings = process.env.EMBEDDINGS_PROVIDER !== "cloudflare";
 // Exclude globs are resolved against this directory; dependencies are hoisted to the repo root.
 const fromNodeModules = (paths) => paths.flatMap((p) => [`node_modules/${p}`, `../../node_modules/${p}`]);
 
-const embeddingRoutes = ["/api/coach", "/api/kb/**", "/api/admin/kb/**", "/api/jobs/**", "/api/reports/**"];
+const embeddingRoutes = ["/api/coach", "/api/kb/**", "/api/admin/kb/**", "/api/jobs/**", "/api/reports/**", "/api/admin/jobs"];
+// Routes that render the weekly report PDF.
+const pdfRoutes = ["/api/jobs/**", "/api/reports/**", "/api/admin/jobs"];
+
+function tracingIncludes() {
+    const includes = {};
+    const add = (route, glob) => (includes[route] = [...(includes[route] ?? []), glob]);
+    if (localEmbeddings) embeddingRoutes.forEach((r) => add(r, "./models/**/*"));
+    pdfRoutes.forEach((r) => add(r, "./assets/fonts/**/*"));
+    return includes;
+}
 
 const onnxExcludes = fromNodeModules([
     "onnxruntime-node/bin/napi-v3/darwin/**",
@@ -48,9 +58,7 @@ const nextConfig = {
         serverComponentsExternalPackages: ["@huggingface/transformers", "onnxruntime-node", "sharp", "@react-pdf/renderer"],
         // Monorepo: trace dependencies from the repository root (hoisted node_modules).
         outputFileTracingRoot: require("node:path").join(__dirname, "../../"),
-        outputFileTracingIncludes: localEmbeddings
-            ? Object.fromEntries(embeddingRoutes.map((route) => [route, ["./models/**/*"]]))
-            : {},
+        outputFileTracingIncludes: tracingIncludes(),
         outputFileTracingExcludes: {
             "*": localEmbeddings ? onnxExcludes : allEmbeddingPackages,
         },
