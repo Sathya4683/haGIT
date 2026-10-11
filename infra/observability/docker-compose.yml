@@ -1,0 +1,134 @@
+# Observability stack: Prometheus (metrics), Loki (logs), Grafana (dashboards + alerting).
+#
+# Local:  included by the root docker-compose.yml, started with `--profile observability`.
+#         Grafana http://localhost:3001 · Prometheus http://localhost:9090 · Loki push http://localhost:3100
+# VM:     run from this directory with an .env file (see .env.example):
+#         docker compose --profile observability --profile edge up -d
+#         Caddy terminates TLS and is the only service exposed publicly.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    profiles: ["observability"]
+    container_name: hagit-prometheus
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        printf '%s' "$$METRICS_TOKEN" > /prometheus/metrics_token
+        exec /bin/prometheus \
+          --config.file=/etc/prometheus/$$PROMETHEUS_CONFIG \
+          --storage.tsdb.path=/prometheus \
+          --storage.tsdb.retention.time=15d \
+          --web.enable-lifecycle
+    environment:
+      METRICS_TOKEN: ${METRICS_TOKEN:-local-metrics-token}
+      PROMETHEUS_CONFIG: ${PROMETHEUS_CONFIG:-prometheus.local.yml}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    mem_limit: 256m
+
+  loki:
+    image: grafana/loki:3.3.2
+    profiles: ["observability"]
+    container_name: hagit-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    mem_limit: 320m
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    profiles: ["observability"]
+    container_name: hagit-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SMTP_ENABLED: ${GF_SMTP_ENABLED:-true}
+      GF_SMTP_HOST: ${GF_SMTP_HOST:-mailpit:1025}
+      GF_SMTP_USER: ${GF_SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${GF_SMTP_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-alerts@hagit.local}
+      GF_SMTP_FROM_NAME: haGIT Alerts
+      GF_SMTP_STARTTLS_POLICY: ${GF_SMTP_STARTTLS_POLICY:-NoStartTLS}
+      # Consumed by provisioning/alerting/contact-points.yml
+      ALERT_EMAIL: ${ALERT_EMAIL:-admin@hagit.local}
+      NTFY_ALERT_URL: ${NTFY_ALERT_URL:-http://ntfy/hagit-alerts}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    mem_limit: 256m
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    profiles: ["observability"]
+    container_name: hagit-blackbox
+    restart: unless-stopped
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    mem_limit: 64m
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    profiles: ["observability"]
+    container_name: hagit-node-exporter
+    restart: unless-stopped
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+
+  # TLS reverse proxy for the VM: Grafana on https://$DOMAIN, Loki push behind basic auth.
+  caddy:
+    image: caddy:2.9-alpine
+    profiles: ["edge"]
+    container_name: hagit-caddy
+    restart: unless-stopped
+    depends_on:
+      - grafana
+      - loki
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+      LOKI_PUSH_USER: ${LOKI_PUSH_USER:-hagit}
+      LOKI_PUSH_HASH: ${LOKI_PUSH_HASH:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 128m
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:
+  caddy_data:
+  caddy_config:

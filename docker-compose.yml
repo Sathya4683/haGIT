@@ -1,0 +1,129 @@
+# Local development stack.
+#
+#   docker compose up -d                          # Postgres (pgvector), Redis, Mailpit, ntfy, job scheduler
+#   docker compose --profile app up -d            # + Next.js dev server in a container
+#   docker compose --profile observability up -d  # + Prometheus, Loki, Grafana, exporters
+#
+# Production does not use this file: the app runs on Vercel + Supabase + Upstash,
+# and only the observability stack (infra/observability) runs on a VM.
+
+name: hagit
+
+include:
+  - infra/observability/docker-compose.yml
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hagit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hagit
+      POSTGRES_PASSWORD: hagit
+      POSTGRES_DB: hagit
+    ports:
+      - "5434:5432"
+    volumes:
+      - hagit_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hagit -d hagit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: hagit-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - hagit_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Catches every outgoing email; web UI at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: hagit-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # Local push-notification server; web UI at http://localhost:8090
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    container_name: hagit-ntfy
+    restart: unless-stopped
+    command: ["serve"]
+    environment:
+      NTFY_BASE_URL: http://localhost:8090
+      NTFY_BEHIND_PROXY: "false"
+    ports:
+      - "8090:80"
+
+  # Stand-in for the production QStash schedule: calls the job endpoint on an interval.
+  scheduler:
+    image: curlimages/curl:8.11.1
+    container_name: hagit-scheduler
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-local-cron-secret}
+      TICK_URL: ${TICK_URL:-http://host.docker.internal:3000/api/jobs/tick}
+      TICK_INTERVAL_SECONDS: ${TICK_INTERVAL_SECONDS:-300}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          curl -fsS -m 60 -X POST -H "Authorization: Bearer $$CRON_SECRET" "$$TICK_URL" >/dev/null \
+            && echo "$$(date -u +%FT%TZ) tick ok" \
+            || echo "$$(date -u +%FT%TZ) tick skipped (app not reachable)"
+          sleep "$$TICK_INTERVAL_SECONDS"
+        done
+
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    container_name: hagit-web
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: apps/web/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hagit:hagit@postgres:5432/hagit
+      DIRECT_URL: postgresql://hagit:hagit@postgres:5432/hagit
+      REDIS_PROVIDER: local
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      NTFY_BASE_URL: http://ntfy
+      AUTH_URL: http://localhost:3000
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./packages/coach-core/src:/app/packages/coach-core/src
+      - ./packages/kb/src:/app/packages/kb/src
+      - ./packages/types/src:/app/packages/types/src
+      - ./content:/app/content
+      - ./prisma:/app/prisma
+
+volumes:
+  hagit_postgres_data:
+  hagit_redis_data:
