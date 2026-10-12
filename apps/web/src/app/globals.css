@@ -6,6 +6,39 @@
   /* Colour variables (--paper, --ink, --brand-*, …) are generated per palette and mode by
      src/lib/palettes.ts and injected in the root layout. */
 
+  /* Habit identity colours: a validated categorical palette (fixed order), with dark-mode
+     steps chosen for the dark surface. Heatmap: one hue (the brand), light → dark. */
+  :root {
+    --series-1: 42 120 214;
+    --series-2: 235 104 52;
+    --series-3: 27 175 122;
+    --series-4: 237 161 0;
+    --series-5: 232 123 164;
+    --series-6: 0 131 0;
+    --series-7: 98 80 214;
+    --series-8: 227 73 72;
+    --heat-0: var(--paper-alt);
+    --heat-1: var(--brand-200);
+    --heat-2: var(--brand-400);
+    --heat-3: var(--brand-600);
+    --heat-4: var(--brand-800);
+  }
+  .dark {
+    --series-1: 57 135 229;
+    --series-2: 217 89 38;
+    --series-3: 25 158 112;
+    --series-4: 201 133 0;
+    --series-5: 213 81 129;
+    --series-6: 0 131 0;
+    --series-7: 144 133 233;
+    --series-8: 230 103 103;
+    --heat-0: var(--paper-alt);
+    --heat-1: var(--brand-900);
+    --heat-2: var(--brand-700);
+    --heat-3: var(--brand-500);
+    --heat-4: var(--brand-300);
+  }
+
   * { box-sizing: border-box; }
 
   html {
@@ -105,4 +138,42 @@
     height: 3px;
     background: rgb(var(--brand));
   }
+}
+
+@layer utilities {
+  /* Graph-paper texture for hero areas */
+  .dot-grid {
+    background-image: radial-gradient(rgb(var(--ink) / 0.13) 1px, transparent 1px);
+    background-size: 14px 14px;
+  }
+  .lift {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .lift:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 rgb(var(--border));
+  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@keyframes confetti {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

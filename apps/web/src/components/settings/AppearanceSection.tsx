@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Check, Monitor, Moon, Sun } from "lucide-react";
+import { Check, Monitor, Moon, Palette, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { PALETTES } from "@/lib/palettes";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function AppearanceSection() {
     };
 
     return (
-        <Section title="Appearance">
+        <Section icon={<Palette size={14} />} title="Theme" hint="Mode and colour palette. Saved to your account.">
             <div className="grid grid-cols-3 border-2 border-[rgb(var(--border))]" role="radiogroup" aria-label="Colour mode">
                 {MODES.map(({ id, label, icon: Icon }) => (
                     <button

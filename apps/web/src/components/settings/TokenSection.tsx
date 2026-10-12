@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { accountApi } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/api-errors";
@@ -43,7 +43,7 @@ export function TokenSection() {
     const iconButton = "btn-press-sm flex-shrink-0 w-7 h-7 flex items-center justify-center border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))]";
 
     return (
-        <Section title="CLI & extension token" hint="Paste into the CLI, the browser extension or the MCP server. Treat it like a password.">
+        <Section icon={<KeyRound size={14} />} title="CLI & extension token" hint="Paste into the CLI, the browser extension or the MCP server. Treat it like a password.">
             <div className="card-flat p-3 space-y-2">
                 <div className="flex items-center gap-2">
                     <code className="text-[11px] font-mono truncate flex-1 text-[rgb(var(--ink-muted))]">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Mail } from "lucide-react";
+import { Download, FileText, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { reportsApi } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/api-errors";
@@ -30,7 +30,7 @@ export function ReportSection() {
     const button = "btn-press-sm flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))] disabled:opacity-60";
 
     return (
-        <Section title="Weekly report" hint="A one-page summary of your week (PDF) with a few library articles picked for you.">
+        <Section icon={<FileText size={14} />} title="Weekly report" hint="A one-page summary of your week (PDF) with a few library articles picked for you.">
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-sm font-bold">Email it to me</p>

@@ -11,11 +11,14 @@ export interface AggregatedCommit {
 export interface CommitByHabit {
     habitId: number;
     habitName: string;
+    createdAt: string;
     commitCount: number;
     currentStreak: number;
     longestStreak: number;
     committedToday: boolean;
     lastCommitAt: string | null;
+    /** Commit counts for the last 14 local days, oldest first (today last). */
+    recent: number[];
 }
 
 export interface NtfySubscription {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { BellRing, Check, Copy, ExternalLink, RefreshCw, Smartphone } from "lucide-react";
+import { BellRing, Check, Copy, ExternalLink, Moon, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { notificationsApi } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/api-errors";
@@ -41,7 +41,7 @@ export function NotificationsSection() {
     };
 
     return (
-        <Section title="Nightly reminder" hint="A push notification in the evening listing habits you haven't committed yet. Sent with the free ntfy app.">
+        <Section icon={<Moon size={14} />} title="Nightly reminder" hint="A push notification in the evening listing habits you haven't committed yet. Sent with the free ntfy app.">
             <div className="flex items-center justify-between gap-3">
                 <label className="text-sm font-bold" htmlFor="nudge-hour">Remind me at</label>
                 <div className="flex items-center gap-2">

@@ -89,6 +89,8 @@ export const habitsApi = {
         apiClient.get<HabitDetail>(`/api/habits/${id}`).then((r) => r.data),
     create: (name: string) =>
         apiClient.post<Habit>("/api/habits", { name }).then((r) => r.data),
+    rename: (id: number, name: string) =>
+        apiClient.patch<Habit>(`/api/habits/${id}`, { name }).then((r) => r.data),
     delete: (id: number) =>
         apiClient.delete<{ success: boolean }>(`/api/habits/${id}`).then((r) => r.data),
 };
@@ -113,7 +115,7 @@ export const commitsApi = {
             .then((r) => r.data),
     push: (habitName: string, message: string) =>
         apiClient
-            .post("/api/commits/push", {
+            .post<{ commits: { id: number; habitName: string; message: string; timestamp: string }[] }>("/api/commits/push", {
                 commits: [{ habitName, message, timestamp: new Date().toISOString() }],
             })
             .then((r) => r.data),

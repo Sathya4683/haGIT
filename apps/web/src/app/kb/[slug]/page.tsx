@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Bot, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import { AskCoachButton } from "@/components/home/AskCoachButton";
 import { Markdown, stripLeadingTitle } from "@/components/kb/Markdown";
 import { tableOfContents } from "@/components/kb/toc";
 import { getPublishedArticle, relatedArticles } from "@/server/kb/queries";
@@ -30,16 +31,16 @@ export default async function KbArticlePage({ params }: Props) {
     const toc = tableOfContents(body);
     const sources = (article.sources as unknown as Source[]) ?? [];
     const related = await relatedArticles(article.id);
-    const askCoach = `/dashboard?coach=${encodeURIComponent(`I just read "${article.title}". How could I apply it to my habits?`)}`;
+    const askCoach = `I just read "${article.title}". How could I apply it to my habits?`;
 
     return (
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8">
             <Link href="/kb" className="inline-flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--ink-muted))] hover:text-[rgb(var(--ink))] mb-6">
                 <ArrowLeft size={12} strokeWidth={2.5} /> All articles
             </Link>
 
-            <div className="lg:grid lg:grid-cols-[1fr_220px] lg:gap-12">
-                <article>
+            <div className="lg:grid lg:grid-cols-[minmax(0,46rem)_220px] lg:justify-between lg:gap-12">
+                <article className="min-w-0">
                     <header className="mb-8">
                         <div className="flex flex-wrap items-center gap-2 mb-4">
                             <span className="text-[10px] font-black font-mono px-1.5 py-0.5 border-2 border-[rgb(var(--border))]">KB{article.id}</span>
@@ -79,9 +80,7 @@ export default async function KbArticlePage({ params }: Props) {
                             <p className="font-black">Make it personal</p>
                             <p className="text-sm text-[rgb(var(--ink-muted))]">Ask the coach how this applies to your own habit data.</p>
                         </div>
-                        <Link href={askCoach} className="btn-press flex items-center gap-2 px-4 py-2.5 text-sm font-bold bg-brand-500 text-white border-2 border-ink shadow-brutal">
-                            <Bot size={15} strokeWidth={2.5} /> Ask the coach
-                        </Link>
+                        <AskCoachButton question={askCoach} />
                     </div>
 
                     {related.length > 0 && (

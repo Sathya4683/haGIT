@@ -1,407 +1,355 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
-import { habitsApi, commitsApi } from "@/lib/api";
-import type { Habit, HabitDetail, Commit } from "@hagit/types";
-import type { AggregatedCommit, CommitByHabit } from "@/types";
-import { TopNav } from "@/components/nav/TopNav";
-import { SettingsDrawer } from "@/components/nav/SettingsDrawer";
-import { ContributionHeatmap } from "@/components/dashboard/ContributionHeatmap";
-import { CommitList } from "@/components/dashboard/CommitList";
-import { HabitSummaryCards } from "@/components/dashboard/HabitSummaryCards";
-import { PushCommitModal } from "@/components/dashboard/PushCommitModal";
-import { DayCommitsPanel } from "@/components/dashboard/DayCommitsPanel";
-import { CoachChat } from "@/components/dashboard/CoachChat";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { NewHabitModal } from "@/components/sidebar/NewHabitModal";
-import { TodayStrip } from "@/components/dashboard/TodayStrip";
-import { OnboardingCard } from "@/components/dashboard/OnboardingCard";
-import { PreferencesSync } from "@/components/dashboard/PreferencesSync";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import type { Commit, HabitDetail as HabitDetailData } from "@hagit/types";
+import type { AggregatedCommit, CommitByHabit } from "@/types";
+import { commitsApi, habitsApi } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/api-errors";
-import { localDayKey, getUserTimezone } from "@/lib/datetime";
+import { habitSlots, seriesColor } from "@/lib/habit-colors";
+import { useAuthStore } from "@/store/authStore";
+import { CelebrateProvider } from "@/components/ui/Celebrate";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AppHeader } from "@/components/home/AppHeader";
+import { AppChrome } from "@/components/home/AppChrome";
+import { Hero } from "@/components/home/Hero";
+import { GettingStarted } from "@/components/home/GettingStarted";
+import { HabitCard, NewHabitCard } from "@/components/home/HabitCard";
+import { Heatmap } from "@/components/home/Heatmap";
+import { DayCommits } from "@/components/home/DayCommits";
+import { ActivityGraph } from "@/components/home/ActivityGraph";
+import { WeekChart } from "@/components/home/WeekChart";
+import { Achievements } from "@/components/home/Achievements";
+import { RecommendedReads } from "@/components/home/RecommendedReads";
+import { HabitDetail } from "@/components/home/HabitDetail";
+import { HabitNameModal } from "@/components/home/HabitNameModal";
+import { Card, SectionTitle } from "@/components/home/Section";
+import type { HabitView } from "@/components/home/types";
+
+const FEED_PAGE = 12;
 
 export default function DashboardPage() {
-    // ── Shared ───────────────────────────────────────────────────────────────
-    const [habits, setHabits] = useState<Habit[]>([]);
-    const [selectedHabitId, setSelectedHabitId] = useState<number | null>(null);
-
-    // ── Overview data ─────────────────────────────────────────────────────────
-    const [commitsByHabit, setCommitsByHabit] = useState<CommitByHabit[]>([]);
-    const [aggregated, setAggregated] = useState<AggregatedCommit[]>([]);
-    const [recentCommits, setRecentCommits] = useState<Commit[]>([]);
-    const [loadingOverview, setLoadingOverview] = useState(true);
-
-    // ── Habit detail ──────────────────────────────────────────────────────────
-    const [habitDetail, setHabitDetail] = useState<HabitDetail | null>(null);
-    const [habitAggregated, setHabitAggregated] = useState<AggregatedCommit[]>([]);
-    const [loadingDetail, setLoadingDetail] = useState(false);
-
-    // ── Day panel ─────────────────────────────────────────────────────────────
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [dayCommits, setDayCommits] = useState<Commit[]>([]);
-    const [loadingDayCommits, setLoadingDayCommits] = useState(false);
-
-    // ── UI ────────────────────────────────────────────────────────────────────
-    const [showPush, setShowPush] = useState(false);
-    const [showNewHabit, setShowNewHabit] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
-    const [showClearCommits, setShowClearCommits] = useState(false);
-    const [clearingCommits, setClearingCommits] = useState(false);
-    const [pendingDeleteHabit, setPendingDeleteHabit] = useState<Habit | null>(null);
-    const [deletingHabit, setDeletingHabit] = useState(false);
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    const buildHabitAggregated = useCallback((detail: HabitDetail) => {
-        const countMap: Record<string, number> = {};
-        const tz = getUserTimezone();
-        detail.commits.forEach((c) => {
-            const d = localDayKey(c.timestamp || c.createdAt, tz);
-            countMap[d] = (countMap[d] || 0) + 1;
-        });
-        return Object.entries(countMap).map(([date, count]) => ({ date, count }));
-    }, []);
-
-    const loadOverview = useCallback(async () => {
-        setLoadingOverview(true);
-        try {
-            const [byHabit, agg, recent, habitList] = await Promise.all([
-                commitsApi.byHabit(),
-                commitsApi.aggregated(),
-                commitsApi.list({ limit: 25 }),
-                habitsApi.list(),
-            ]);
-            setCommitsByHabit(byHabit);
-            setAggregated(agg);
-            setRecentCommits(recent);
-            setHabits(habitList);
-        } finally { setLoadingOverview(false); }
-    }, []);
-
-    const loadHabitDetail = useCallback(async (id: number) => {
-        setLoadingDetail(true);
-        setSelectedDate(null);
-        setDayCommits([]);
-        try {
-            const detail = await habitsApi.get(id);
-            setHabitDetail(detail);
-            setHabitAggregated(buildHabitAggregated(detail));
-        } finally { setLoadingDetail(false); }
-    }, [buildHabitAggregated]);
-
-    useEffect(() => { loadOverview(); }, [loadOverview]);
-
-    useEffect(() => {
-        if (selectedHabitId === null) {
-            setHabitDetail(null); setHabitAggregated([]);
-            setSelectedDate(null); setDayCommits([]);
-            return;
-        }
-        loadHabitDetail(selectedHabitId);
-    }, [selectedHabitId, loadHabitDetail]);
-
-    // ── Day click ─────────────────────────────────────────────────────────────
-    const handleDayClick = useCallback(async (date: string) => {
-        if (selectedDate === date) { setSelectedDate(null); setDayCommits([]); return; }
-        setSelectedDate(date);
-        setLoadingDayCommits(true);
-        try {
-            const hn = selectedHabitId !== null ? habits.find((h) => h.id === selectedHabitId)?.name : undefined;
-            setDayCommits(await commitsApi.onDay(date, hn));
-        } finally { setLoadingDayCommits(false); }
-    }, [selectedDate, selectedHabitId, habits]);
-
-    // ── Mutations ─────────────────────────────────────────────────────────────
-    const handleCommitDeleted = useCallback((commitId: string) => {
-        setRecentCommits((p) => p.filter((c) => c.id !== commitId));
-        setDayCommits((p) => p.filter((c) => c.id !== commitId));
-        commitsApi.aggregated().then(setAggregated);
-        commitsApi.byHabit().then(setCommitsByHabit);
-        if (selectedHabitId !== null) {
-            habitsApi.get(selectedHabitId).then((d) => {
-                setHabitDetail(d); setHabitAggregated(buildHabitAggregated(d));
-                habitsApi.list().then(setHabits);
-            });
-        } else { habitsApi.list().then(setHabits); }
-    }, [selectedHabitId, buildHabitAggregated]);
-
-    const handleClearCommits = async () => {
-        if (!habitDetail) return;
-        setClearingCommits(true);
-        try {
-            await commitsApi.deleteByHabit(habitDetail.id);
-            toast.success("Commits cleared.");
-            setShowClearCommits(false);
-            setSelectedDate(null); setDayCommits([]);
-            await loadHabitDetail(habitDetail.id);
-            commitsApi.aggregated().then(setAggregated);
-            commitsApi.byHabit().then(setCommitsByHabit);
-            habitsApi.list().then(setHabits);
-        } catch (error) { toast.error(apiErrorMessage(error, "Failed to clear commits.")); }
-        finally { setClearingCommits(false); }
-    };
-
-    const handleConfirmDeleteHabit = async () => {
-        if (!pendingDeleteHabit) return;
-        setDeletingHabit(true);
-        try {
-            await habitsApi.delete(pendingDeleteHabit.id);
-            if (selectedHabitId === pendingDeleteHabit.id) setSelectedHabitId(null);
-            toast.success(`"${pendingDeleteHabit.name}" deleted.`);
-            setPendingDeleteHabit(null);
-            loadOverview();
-        } catch (error) { toast.error(apiErrorMessage(error, "Failed to delete habit.")); }
-        finally { setDeletingHabit(false); }
-    };
-
-    const handlePushSuccess = useCallback(() => {
-        loadOverview();
-        if (selectedHabitId !== null) loadHabitDetail(selectedHabitId);
-    }, [selectedHabitId, loadOverview, loadHabitDetail]);
-
-    const handleNewHabit = (habit: Habit) => {
-        setHabits((p) => [...p, habit]);
-        setShowNewHabit(false);
-        toast.success(`"${habit.name}" created.`);
-        commitsApi.byHabit().then(setCommitsByHabit);
-    };
-
-    const totalCommits = commitsByHabit.reduce((s, c) => s + c.commitCount, 0);
-    // Last 7 local calendar days, including today.
-    const weekCommits = (() => {
-        const tz = getUserTimezone();
-        const days = new Set<string>();
-        for (let i = 0; i < 7; i++) days.add(localDayKey(new Date(Date.now() - i * 86_400_000), tz));
-        return aggregated.reduce((sum, d) => (days.has(d.date) ? sum + d.count : sum), 0);
-    })();
-
     return (
-        <div className="min-h-screen bg-[rgb(var(--paper))]">
-            <TopNav
-                habits={habits} selectedHabitId={selectedHabitId}
-                onSelectHabit={setSelectedHabitId} onCreateHabit={() => setShowNewHabit(true)}
-                onDeleteHabit={setPendingDeleteHabit} onPushCommit={() => setShowPush(true)}
-                onOpenSettings={() => setShowSettings(true)} loading={loadingOverview}
-            />
-            <SettingsDrawer open={showSettings} onClose={() => setShowSettings(false)} />
-            <PreferencesSync />
-
-            {/* ── OVERVIEW ──────────────────────────────────────────────────────── */}
-            {selectedHabitId === null && (
-                <div className="animate-fade-in">
-
-                    {/* Stats bar */}
-                    <div className="border-b-2 border-[rgb(var(--border))]">
-                        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-wrap gap-x-0 gap-y-0">
-                            {loadingOverview ? (
-                                <div className="flex gap-8">
-                                    {[72, 48, 60].map((w, i) => (
-                                        <div key={i} className="space-y-1.5">
-                                            <div className="h-7 shimmer-bg" style={{ width: w }} />
-                                            <div className="h-3 shimmer-bg w-20" />
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-wrap divide-x-2 divide-[rgb(var(--border))]">
-                                    <StatCard value={totalCommits} label="total commits" />
-                                    <StatCard value={habits.length} label={`habit${habits.length !== 1 ? "s" : ""}`} />
-                                    <StatCard value={weekCommits} label="this week" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Main layout */}
-                    <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
-                        <div className="flex flex-col lg:flex-row gap-8 lg:gap-10">
-
-                            {/* Left column — today, heatmap, commits */}
-                            <div className="flex-1 min-w-0 space-y-8">
-                                {!loadingOverview && (
-                                    <OnboardingCard
-                                        habitCount={habits.length} commitCount={totalCommits}
-                                        onCreateHabit={() => setShowNewHabit(true)} onPushCommit={() => setShowPush(true)}
-                                        onOpenSettings={() => setShowSettings(true)}
-                                    />
-                                )}
-                                <TodayStrip
-                                    habits={commitsByHabit} loading={loadingOverview}
-                                    onCommitted={handlePushSuccess} onCreateHabit={() => setShowNewHabit(true)}
-                                />
-                                {/* Heatmap card */}
-                                <div className="card p-5 space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-[rgb(var(--ink-muted))]">
-                                        Contribution graph
-                                    </p>
-                                    {loadingOverview
-                                        ? <div className="h-24 shimmer-bg" />
-                                        : <ContributionHeatmap data={aggregated} onDayClick={handleDayClick} selectedDate={selectedDate} />
-                                    }
-                                    {selectedDate && (
-                                        <DayCommitsPanel
-                                            date={selectedDate} commits={dayCommits} loading={loadingDayCommits}
-                                            onClose={() => { setSelectedDate(null); setDayCommits([]); }}
-                                            onDeleted={handleCommitDeleted}
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Recent commits */}
-                                <div className="card p-5">
-                                    <CommitList commits={recentCommits} loading={loadingOverview} onDeleted={handleCommitDeleted} />
-                                </div>
-                            </div>
-
-                            {/* Right column — habits ranking */}
-                            <div className="w-full lg:w-60 xl:w-72 flex-shrink-0 space-y-4">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-[rgb(var(--ink-muted))]">
-                                    Habits
-                                </p>
-                                <HabitSummaryCards data={commitsByHabit} loading={loadingOverview} onSelect={setSelectedHabitId} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── HABIT DETAIL ────────────────────────────────────────────────── */}
-            {selectedHabitId !== null && (
-                <div className="animate-fade-in">
-
-                    {/* Header strip */}
-                    <div className="border-b-2 border-[rgb(var(--border))] bg-[rgb(var(--paper-alt))]">
-                        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-5">
-                            <button
-                                onClick={() => setSelectedHabitId(null)}
-                                className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--ink-muted))] hover:text-[rgb(var(--ink))] transition-colors mb-4 group"
-                            >
-                                <ArrowLeft size={12} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
-                                All habits
-                            </button>
-
-                            {loadingDetail ? (
-                                <div className="space-y-2">
-                                    <div className="h-7 w-48 shimmer-bg" />
-                                    <div className="h-4 w-24 shimmer-bg" />
-                                </div>
-                            ) : habitDetail ? (
-                                <div className="flex items-start justify-between gap-4 flex-wrap">
-                                    <div>
-                                        <h1 className="text-2xl font-black tracking-tight">{habitDetail.name}</h1>
-                                        <div className="flex items-center gap-3 mt-1.5">
-                                            <span className="font-mono font-bold text-[rgb(var(--ink-muted))] text-sm">
-                                                {habitDetail.commitCount} commit{habitDetail.commitCount !== 1 ? "s" : ""}
-                                            </span>
-                                            <div className="h-3 w-px bg-[rgb(var(--border))]" />
-                                            <div className="h-1 w-1 bg-brand-500" />
-                                            <span className="text-xs font-bold text-brand-600 dark:text-brand-400">Active</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setShowClearCommits(true)}
-                                            className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                                        >
-                                            <Trash2 size={11} />
-                                            Clear commits
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                const h = habits.find((x) => x.id === habitDetail.id);
-                                                if (h) setPendingDeleteHabit(h);
-                                            }}
-                                            className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 border-2 border-ink transition-all"
-                                        >
-                                            <Trash2 size={11} />
-                                            Delete habit
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    {/* Heatmap */}
-                    <div className="border-b-2 border-[rgb(var(--border))]">
-                        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-6">
-                            {loadingDetail
-                                ? <div className="h-24 shimmer-bg" />
-                                : <ContributionHeatmap data={habitAggregated} onDayClick={handleDayClick} selectedDate={selectedDate} />
-                            }
-                            {selectedDate && (
-                                <DayCommitsPanel
-                                    date={selectedDate} commits={dayCommits} loading={loadingDayCommits}
-                                    onClose={() => { setSelectedDate(null); setDayCommits([]); }}
-                                    onDeleted={handleCommitDeleted}
-                                />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Commits */}
-                    <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-8 max-w-2xl">
-                        <div className="card p-5">
-                            {habitDetail && (
-                                <CommitList
-                                    commits={habitDetail.commits.map((c) => ({
-                                        id: String(c.id), habitName: habitDetail.name,
-                                        message: c.message, timestamp: c.timestamp || c.createdAt, synced: true,
-                                    }))}
-                                    loading={loadingDetail} title="Commits"
-                                    onDeleted={handleCommitDeleted}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Modals ─────────────────────────────────────────────────────────── */}
-            {showPush && (
-                <PushCommitModal
-                    habits={habits}
-                    defaultHabitName={selectedHabitId ? habits.find((h) => h.id === selectedHabitId)?.name : undefined}
-                    onClose={() => setShowPush(false)} onSuccess={handlePushSuccess}
-                />
-            )}
-            {showNewHabit && (
-                <NewHabitModal onClose={() => setShowNewHabit(false)} onCreated={handleNewHabit} />
-            )}
-            {showClearCommits && habitDetail && (
-                <ConfirmDialog
-                    title={`Clear all commits for "${habitDetail.name}"?`}
-                    description={`Permanently deletes all ${habitDetail.commitCount} commit${habitDetail.commitCount !== 1 ? "s" : ""}. The habit remains.`}
-                    confirmLabel="Clear commits"
-                    loading={clearingCommits}
-                    onConfirm={handleClearCommits}
-                    onCancel={() => setShowClearCommits(false)}
-                />
-            )}
-            {pendingDeleteHabit && (
-                <ConfirmDialog
-                    title={`Delete "${pendingDeleteHabit.name}"?`}
-                    description="This permanently deletes the habit and all its commits."
-                    confirmLabel="Delete habit"
-                    loading={deletingHabit}
-                    onConfirm={handleConfirmDeleteHabit}
-                    onCancel={() => setPendingDeleteHabit(null)}
-                />
-            )}
-
-            <Suspense fallback={null}>
-                <CoachChat />
-            </Suspense>
-        </div>
+        <Suspense fallback={null}>
+            <CelebrateProvider>
+                <Dashboard />
+            </CelebrateProvider>
+        </Suspense>
     );
 }
 
-function StatCard({ value, label }: { value: number; label: string }) {
+function Dashboard() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const email = useAuthStore((s) => s.user?.email);
+    const selectedHabitId = Number(searchParams.get("habit")) || null;
+
+    const [byHabit, setByHabit] = useState<CommitByHabit[]>([]);
+    const [aggregated, setAggregated] = useState<AggregatedCommit[]>([]);
+    const [feed, setFeed] = useState<Commit[]>([]);
+    const [feedLimit, setFeedLimit] = useState(FEED_PAGE);
+    const [loading, setLoading] = useState(true);
+
+    const [detail, setDetail] = useState<HabitDetailData | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [dayCommits, setDayCommits] = useState<Commit[]>([]);
+    const [loadingDay, setLoadingDay] = useState(false);
+
+    const [creating, setCreating] = useState(false);
+    const [renaming, setRenaming] = useState<HabitView | null>(null);
+    const [clearing, setClearing] = useState<HabitView | null>(null);
+    const [deleting, setDeleting] = useState<HabitView | null>(null);
+    const [deletingCommit, setDeletingCommit] = useState<Commit | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    // ── Data ────────────────────────────────────────────────────────────────
+    const refresh = useCallback(async (limit = feedLimit) => {
+        const [h, a, f] = await Promise.all([commitsApi.byHabit(), commitsApi.aggregated(), commitsApi.list({ limit })]);
+        setByHabit(h);
+        setAggregated(a);
+        setFeed(f);
+    }, [feedLimit]);
+
+    useEffect(() => {
+        refresh().catch(() => toast.error("Couldn't load your habits.")).finally(() => setLoading(false));
+        // Initial load only; later refreshes are explicit.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // "New habit" from other pages links here with ?new=1.
+    useEffect(() => {
+        if (searchParams.get("new") !== "1") return;
+        setCreating(true);
+        router.replace(pathname, { scroll: false });
+    }, [searchParams, router, pathname]);
+
+    const loadDetail = useCallback(async (id: number) => {
+        setLoadingDetail(true);
+        try { setDetail(await habitsApi.get(id)); }
+        catch { setDetail(null); }
+        finally { setLoadingDetail(false); }
+    }, []);
+
+    useEffect(() => {
+        if (selectedHabitId === null) { setDetail(null); return; }
+        loadDetail(selectedHabitId);
+        window.scrollTo({ top: 0 });
+    }, [selectedHabitId, loadDetail]);
+
+    const afterChange = useCallback(async () => {
+        await refresh();
+        if (selectedHabitId !== null) await loadDetail(selectedHabitId);
+        if (selectedDate) commitsApi.onDay(selectedDate).then(setDayCommits).catch(() => undefined);
+    }, [refresh, loadDetail, selectedHabitId, selectedDate]);
+
+    // ── Derived ─────────────────────────────────────────────────────────────
+    const habits: HabitView[] = useMemo(() => {
+        const slots = habitSlots(byHabit.map((h) => ({ id: h.habitId, createdAt: h.createdAt })));
+        return byHabit.map((h) => {
+            const slot = slots.get(h.habitId) ?? 0;
+            return { ...h, slot, color: seriesColor(slot) };
+        });
+    }, [byHabit]);
+
+    const colorByName = useMemo(() => new Map(habits.map((h) => [h.habitName, h.color])), [habits]);
+    const colorOf = useCallback((name: string) => colorByName.get(name) ?? "rgb(var(--ink-muted))", [colorByName]);
+    const habitOrder = useMemo(() => [...habits].sort((a, b) => a.slot - b.slot).map((h) => h.habitName), [habits]);
+    const counts = useMemo(() => Object.fromEntries(aggregated.map((d) => [d.date, d.count])), [aggregated]);
+
+    const totalCommits = habits.reduce((s, h) => s + h.commitCount, 0);
+    const weekCommits = habits.reduce((s, h) => s + h.recent.slice(-7).reduce((a, b) => a + b, 0), 0);
+    const lastWeekCommits = habits.reduce((s, h) => s + h.recent.slice(0, 7).reduce((a, b) => a + b, 0), 0);
+    const openToday = habits.filter((h) => !h.committedToday).length;
+    const selected = habits.find((h) => h.habitId === selectedHabitId);
+
+    // ── Navigation ──────────────────────────────────────────────────────────
+    const openHabit = (id: number | null) => router.push(id ? `${pathname}?habit=${id}` : pathname, { scroll: false });
+
+    const toggleDay = async (date: string) => {
+        if (selectedDate === date) { setSelectedDate(null); return; }
+        setSelectedDate(date);
+        setLoadingDay(true);
+        try { setDayCommits(await commitsApi.onDay(date)); }
+        catch { setDayCommits([]); }
+        finally { setLoadingDay(false); }
+    };
+
+    // ── Mutations ───────────────────────────────────────────────────────────
+    const run = async (work: () => Promise<unknown>, success: string, failure: string, done: () => void) => {
+        setBusy(true);
+        try {
+            await work();
+            toast.success(success);
+            done();
+            await afterChange();
+        } catch (error) {
+            toast.error(apiErrorMessage(error, failure));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const confirmClear = () => clearing && run(
+        () => commitsApi.deleteByHabit(clearing.habitId),
+        `Cleared commits for ${clearing.habitName}.`, "Couldn't clear commits.", () => setClearing(null),
+    );
+    const confirmDelete = () => deleting && run(
+        () => habitsApi.delete(deleting.habitId),
+        `Deleted ${deleting.habitName}.`, "Couldn't delete the habit.",
+        () => { if (selectedHabitId === deleting.habitId) openHabit(null); setDeleting(null); },
+    );
+    const confirmDeleteCommit = () => deletingCommit && run(
+        () => commitsApi.delete(deletingCommit.id),
+        "Commit deleted.", "Couldn't delete the commit.", () => setDeletingCommit(null),
+    );
+
+    const loadMore = async () => {
+        const next = feedLimit + FEED_PAGE;
+        setFeedLimit(next);
+        setFeed(await commitsApi.list({ limit: next }));
+    };
+
+    const focusQuickCommit = () => {
+        const el = document.getElementById("quick-commit-input");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+    };
+
     return (
-        <div className="px-6 first:pl-0 py-1 space-y-0.5">
-            <div className="text-3xl font-black tracking-tight tabular-nums font-mono leading-none">{value}</div>
-            <div className="text-xs font-bold uppercase tracking-wider text-[rgb(var(--ink-muted))]">{label}</div>
+        <div className="min-h-screen bg-[rgb(var(--paper))]">
+            <AppHeader onNewHabit={() => setCreating(true)} onHome={() => openHabit(null)} />
+
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-28 md:pb-12">
+                {selectedHabitId !== null ? (
+                    selected ? (
+                        <HabitDetail
+                            habit={selected}
+                            habits={habits}
+                            detail={detail?.id === selected.habitId ? detail : null}
+                            loading={loadingDetail}
+                            onBack={() => openHabit(null)}
+                            onCommitted={() => afterChange()}
+                            onDeleteCommit={setDeletingCommit}
+                            onRename={() => setRenaming(selected)}
+                            onClear={() => setClearing(selected)}
+                            onDelete={() => setDeleting(selected)}
+                        />
+                    ) : loading ? (
+                        <div className="space-y-4"><div className="h-48 shimmer-bg" /><div className="h-64 shimmer-bg" /></div>
+                    ) : (
+                        <div className="card p-8 text-center">
+                            <p className="font-mono text-sm">error: pathspec did not match any habit</p>
+                            <button onClick={() => openHabit(null)} className="mt-4 text-sm font-bold underline decoration-brand-500 decoration-2 underline-offset-2">Back to today</button>
+                        </div>
+                    )
+                ) : (
+                    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+                        {loading ? (
+                            <div className="h-56 shimmer-bg border-2 border-[rgb(var(--border))]/30" />
+                        ) : (
+                            <Hero
+                                email={email}
+                                habits={habits}
+                                weekCommits={weekCommits}
+                                lastWeekCommits={lastWeekCommits}
+                                totalCommits={totalCommits}
+                                onCommitted={() => afterChange()}
+                                onCreateHabit={() => setCreating(true)}
+                            />
+                        )}
+
+                        {!loading && (
+                            <GettingStarted
+                                habitCount={habits.length}
+                                commitCount={totalCommits}
+                                onCreateHabit={() => setCreating(true)}
+                                onFirstCommit={focusQuickCommit}
+                            />
+                        )}
+
+                        <section>
+                            <SectionTitle
+                                title="habits"
+                                meta={habits.length ? `${habits.length - openToday} of ${habits.length} committed today` : undefined}
+                            />
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {loading
+                                    ? [0, 1, 2].map((i) => <div key={i} className="h-[220px] shimmer-bg" />)
+                                    : habits.map((h) => (
+                                        <HabitCard
+                                            key={h.habitId}
+                                            habit={h}
+                                            isLastOpen={!h.committedToday && openToday === 1}
+                                            onOpen={() => openHabit(h.habitId)}
+                                            onChanged={() => afterChange()}
+                                            onRename={() => setRenaming(h)}
+                                            onClear={() => setClearing(h)}
+                                            onDelete={() => setDeleting(h)}
+                                        />
+                                    ))}
+                                {!loading && <NewHabitCard onClick={() => setCreating(true)} />}
+                            </div>
+                        </section>
+
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] items-start">
+                            <div className="space-y-6 min-w-0">
+                                <Card>
+                                    <SectionTitle title="contributions" meta="Every commit, every habit. Tap a day to see it." />
+                                    {loading ? <div className="h-36 shimmer-bg" /> : (
+                                        <Heatmap counts={counts} selectedDate={selectedDate} onDayClick={toggleDay} />
+                                    )}
+                                    {selectedDate && (
+                                        <DayCommits
+                                            date={selectedDate} commits={dayCommits} loading={loadingDay}
+                                            colorOf={colorOf} onClose={() => setSelectedDate(null)} onDelete={setDeletingCommit}
+                                        />
+                                    )}
+                                </Card>
+
+                                <Card>
+                                    <SectionTitle prefix="$ " title="git log --graph" meta="Recent commits, one lane per habit" />
+                                    <ActivityGraph
+                                        commits={feed}
+                                        colorOf={colorOf}
+                                        habitOrder={habitOrder}
+                                        onDelete={setDeletingCommit}
+                                        loading={loading}
+                                        hasMore={feed.length >= feedLimit}
+                                        onLoadMore={loadMore}
+                                    />
+                                </Card>
+                            </div>
+
+                            <aside className="space-y-6 min-w-0">
+                                <Card>
+                                    <SectionTitle title="this-week" />
+                                    {loading ? <div className="h-40 shimmer-bg" /> : <WeekChart habits={habits} />}
+                                </Card>
+                                <Card>
+                                    <SectionTitle title="achievements" />
+                                    {loading ? <div className="h-40 shimmer-bg" /> : <Achievements habits={habits} totalCommits={totalCommits} />}
+                                </Card>
+                                {!loading && (
+                                    <Card>
+                                        <SectionTitle title="worth-reading" action={<Link href="/kb" className="text-xs font-bold text-[rgb(var(--ink-muted))] hover:text-[rgb(var(--ink))]">Library →</Link>} />
+                                        <RecommendedReads habits={habits} />
+                                    </Card>
+                                )}
+                            </aside>
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            <AppChrome />
+
+            {(creating || renaming) && (
+                <HabitNameModal
+                    habit={renaming ? { id: renaming.habitId, name: renaming.habitName } : undefined}
+                    onClose={() => { setCreating(false); setRenaming(null); }}
+                    onSaved={(h) => {
+                        toast.success(renaming ? `Renamed to ${h.name}.` : `Created ${h.name}. Make your first commit!`);
+                        setCreating(false);
+                        setRenaming(null);
+                        afterChange();
+                    }}
+                />
+            )}
+            {clearing && (
+                <ConfirmDialog
+                    title={`Clear all commits for "${clearing.habitName}"?`}
+                    description={`Permanently deletes ${clearing.commitCount} commit${clearing.commitCount === 1 ? "" : "s"} and resets its streak. The habit stays.`}
+                    confirmLabel="Clear commits"
+                    loading={busy}
+                    onConfirm={confirmClear}
+                    onCancel={() => setClearing(null)}
+                />
+            )}
+            {deleting && (
+                <ConfirmDialog
+                    title={`Delete "${deleting.habitName}"?`}
+                    description="This permanently deletes the habit and all of its commits."
+                    confirmLabel="Delete habit"
+                    loading={busy}
+                    onConfirm={confirmDelete}
+                    onCancel={() => setDeleting(null)}
+                />
+            )}
+            {deletingCommit && (
+                <ConfirmDialog
+                    title="Delete this commit?"
+                    description={`"${deletingCommit.message}" will be removed from ${deletingCommit.habitName}. Streaks are recalculated.`}
+                    confirmLabel="Delete commit"
+                    loading={busy}
+                    onConfirm={confirmDeleteCommit}
+                    onCancel={() => setDeletingCommit(null)}
+                />
+            )}
         </div>
     );
 }
