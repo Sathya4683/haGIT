@@ -22,7 +22,7 @@ export default async function AdminUsersPage() {
 
     return (
         <>
-            <PageHeader title="Users" description={`${users.length} account${users.length === 1 ? "" : "s"}. Habit contents are never shown here.`} />
+            <PageHeader eyebrow="~/people" title="Users" description={`${users.length} account${users.length === 1 ? "" : "s"}. Habit contents are never shown here.`} />
             <UsersTable
                 currentUserId={actor.userId}
                 canManage={can(actor.role, "users:manage")}

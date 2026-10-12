@@ -13,7 +13,11 @@ export default async function AdminConsoleLayout({ children }: { children: React
 
     const nav = ADMIN_NAV.filter((item) => can(actor.role, item.permission));
     return (
-        <AdminShell base={base} email={actor.email} role={actor.role} nav={nav}>
+        <AdminShell
+            base={base} email={actor.email} role={actor.role} nav={nav}
+            grafanaUrl={can(actor.role, "ops:view") ? process.env.GRAFANA_URL || undefined : undefined}
+            appUrl={process.env.APP_URL || undefined}
+        >
             {children}
         </AdminShell>
     );

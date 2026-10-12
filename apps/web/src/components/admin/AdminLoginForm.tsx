@@ -76,7 +76,6 @@ export function AdminLoginForm({ base, googleEnabled, signedInWithoutAccess }: P
                     Continue with Google
                 </button>
             )}
-            <p className="text-[11px] text-[rgb(var(--ink-muted))]">Only editor and admin accounts can sign in here.</p>
         </div>
     );
 }

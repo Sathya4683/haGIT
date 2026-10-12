@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Play } from "lucide-react";
 import { toast } from "sonner";
 
-export function RunTickButton() {
+export function RunTickButton({ subtle }: { subtle?: boolean }) {
     const router = useRouter();
     const [running, setRunning] = useState(false);
 
@@ -27,7 +27,13 @@ export function RunTickButton() {
     };
 
     return (
-        <button onClick={run} disabled={running} className="btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-brand-500 text-white border-2 border-ink shadow-brutal-sm disabled:opacity-60">
+        <button
+            onClick={run}
+            disabled={running}
+            className={subtle
+                ? "btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))] disabled:opacity-60"
+                : "btn-press-sm flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-brand-500 text-white border-2 border-ink shadow-brutal-sm disabled:opacity-60"}
+        >
             <Play size={12} /> {running ? "Running…" : "Run tick now"}
         </button>
     );
