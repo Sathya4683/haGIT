@@ -103,6 +103,28 @@ services:
       - /:/host:ro,rslave
     mem_limit: 64m
 
+  # Production job scheduler: calls the app's /api/jobs/tick at :01 and :31 every hour (UTC),
+  # so reminders land on time in half-hour timezones too. Ticks are idempotent.
+  cron:
+    image: curlimages/curl:8.11.1
+    profiles: ["cron"]
+    container_name: hagit-cron
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+      TICK_URL: ${TICK_URL:-https://hagithub.vercel.app/api/jobs/tick}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          now=$$(date +%s); next=$$(( now / 1800 * 1800 + 60 )); [ "$$next" -le "$$now" ] && next=$$(( next + 1800 ))
+          sleep $$(( next - now ))
+          curl -fsS -m 90 --retry 3 --retry-delay 20 --retry-all-errors -X POST \
+            -H "Authorization: Bearer $$CRON_SECRET" "$$TICK_URL" -o /dev/null -w "$$(date -u +%FT%TZ) tick %{http_code}\n" \
+            || echo "$$(date -u +%FT%TZ) tick failed"
+        done
+    mem_limit: 32m
+
   # TLS reverse proxy for the VM: Grafana on https://$DOMAIN, Loki push behind basic auth.
   caddy:
     image: caddy:2.9-alpine
@@ -114,7 +136,6 @@ services:
       - loki
     environment:
       DOMAIN: ${DOMAIN:-localhost}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
       LOKI_PUSH_USER: ${LOKI_PUSH_USER:-hagit}
       LOKI_PUSH_HASH: ${LOKI_PUSH_HASH:-}
     ports:

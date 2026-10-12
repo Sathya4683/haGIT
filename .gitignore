@@ -69,3 +69,10 @@ apps/web/models/
 
 # observability stack secrets
 infra/observability/.env
+
+# terraform state, plans and local variables
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfplan
+infra/terraform/terraform.tfvars

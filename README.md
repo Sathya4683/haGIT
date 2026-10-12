@@ -37,7 +37,7 @@ flowchart LR
     DB[(Postgres + pgvector)]
     REDIS[(Redis: token buckets)]
     GEM[Gemini]
-    QS[QStash schedule]
+    QS[Scheduler: monitoring host or QStash]
     NTFY[ntfy]
     SMTP[SMTP]
     OBS[Prometheus · Loki · Grafana]
@@ -47,7 +47,7 @@ flowchart LR
     API --> REDIS
     API --> COACH --> GEM
     COACH --> KB --> DB
-    QS -->|hourly, signed| JOBS
+    QS -->|every 30 min, authenticated| JOBS
     JOBS --> NTFY
     JOBS --> SMTP
     API -. logs .-> OBS
@@ -57,7 +57,7 @@ flowchart LR
 - **One API for every client.** Route handlers share a wrapper (`apps/web/src/server/http/withRoute.ts`) that handles request ids, authentication, zod validation, token-bucket rate limiting, error mapping and one structured log line per request.
 - **Two authentication paths.** Users get a revocable API token (CLI, extension, MCP and dashboard). The admin console uses an Auth.js session and checks the role against the database on every request.
 - **Admin on its own host.** With `ADMIN_HOST` set, middleware serves the console on that hostname and returns 404 for `/admin` everywhere else.
-- **Scheduled work runs outside the request path.** An hourly signed request runs idempotent jobs in each user's timezone (see [Reminders and reports](#reminders-and-reports)).
+- **Scheduled work runs outside the request path.** An authenticated request every 30 minutes runs idempotent jobs in each user's timezone (see [Reminders and reports](#reminders-and-reports)).
 
 ---
 
@@ -75,7 +75,8 @@ packages/
   types/          Shared TypeScript types
 content/kb/       Knowledge-base articles (Markdown + frontmatter), synced into the database
 prisma/           Database schema and migrations
-infra/observability/  Prometheus, Loki, Grafana (dashboards, alerts), Caddy
+infra/observability/  Prometheus, Loki, Grafana (dashboards, alerts), Caddy, job scheduler
+infra/terraform/      EC2 host for the observability stack (Elastic IP, security group, budget)
 scripts/          Admin promotion, QStash schedule setup
 ```
 
@@ -147,7 +148,7 @@ Published articles are public at `/kb`. The admin playground shows the full rank
 
 ## Reminders and reports
 
-`POST /api/jobs/tick` runs hourly, triggered by an Upstash QStash schedule (`npm run jobs:schedule`) and authenticated by QStash signature or `CRON_SECRET`.
+`POST /api/jobs/tick` runs every 30 minutes (at :01 and :31, so half-hour timezones are served on time). In production the scheduler container on the monitoring host calls it with `CRON_SECRET`; an Upstash QStash schedule (`npm run jobs:schedule`, verified by signature) works as an alternative.
 
 - **Nightly reminder:** after the user's chosen hour, a push notification to their private ntfy channel lists habits not committed today, with streaks at risk first.
 - **Weekly report:** on Monday morning, an email with a one-page PDF of the previous week (commits, active days, habits, 12-week heatmap, a note and suggested articles), themed with the user's palette.
@@ -170,7 +171,7 @@ Every privileged action is written to the audit log.
 - **Probes:** blackbox checks of the site and `/api/health` (database and Redis).
 - **Dashboards and alerts:** service health, product and jobs & clients; alerts for downtime, error rate, stale jobs, coach failures, TLS and disk, delivered by email and ntfy.
 
-`infra/observability` runs the stack locally or on a small VM behind Caddy (TLS).
+`infra/observability` runs the stack locally or on a small VM behind Caddy (TLS). `infra/terraform` provisions that VM on AWS (t3.micro, Elastic IP, `sslip.io` hostname, monthly budget alert) and `infra/terraform/deploy.sh` syncs the configuration, generates its secrets and starts the stack.
 
 ---
 
@@ -220,7 +221,7 @@ See [`packages/mcp/README.md`](packages/mcp/README.md) for other clients and opt
 
 ## Deployment
 
-The reference deployment uses free tiers: **Vercel** (app), **Supabase** (Postgres with pgvector), **Upstash** (Redis and QStash), **Gmail SMTP** (reports), **ntfy.sh** (push), with the observability stack on a small VM. GitHub Actions run CI on every pull request, apply migrations and sync knowledge-base content on `main`, and deploy the observability configuration.
+The reference deployment uses free tiers: **Vercel** (app and admin host), **Supabase** (Postgres with pgvector), **Upstash** (Redis), **Gmail SMTP** (reports), **ntfy.sh** (push), with the observability stack and job scheduler on a small EC2 instance. GitHub Actions run CI on every pull request, apply migrations and sync knowledge-base content on `main`, and deploy the observability configuration.
 
 All configuration is documented in [`apps/web/.env.example`](apps/web/.env.example) and [`infra/observability/.env.example`](infra/observability/.env.example).
 
