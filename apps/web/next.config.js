@@ -14,11 +14,18 @@ const embeddingRoutes = ["/api/coach", "/api/kb/**", "/api/admin/kb/**", "/api/j
 // Routes that render the weekly report PDF.
 const pdfRoutes = ["/api/jobs/**", "/api/reports/**", "/api/admin/jobs"];
 
+// pdfkit loads its built-in fonts (Helvetica is the document default) through the package-internal
+// "#standard-fonts/*" import, which file tracing does not follow.
+const pdfkitStandardFonts = fromNodeModules(["pdfkit/js/standard-fonts/**/*"]);
+
 function tracingIncludes() {
     const includes = {};
     const add = (route, glob) => (includes[route] = [...(includes[route] ?? []), glob]);
     if (localEmbeddings) embeddingRoutes.forEach((r) => add(r, "./models/**/*"));
-    pdfRoutes.forEach((r) => add(r, "./assets/fonts/**/*"));
+    pdfRoutes.forEach((r) => {
+        add(r, "./assets/fonts/**/*");
+        pdfkitStandardFonts.forEach((glob) => add(r, glob));
+    });
     return includes;
 }
 
