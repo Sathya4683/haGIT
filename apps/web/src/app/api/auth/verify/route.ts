@@ -1,20 +1,11 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, serverError } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
-export async function POST(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-        const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-        if (!user) return unauthorized();
-        return Response.json({ userId: user.id, email: user.email });
-    } catch {
-        return unauthorized();
-    }
-}
+import { withRoute } from "@/server/http/withRoute";
 
-// CLI also calls GET /api/auth/verify
-export async function GET(req: NextRequest) {
-    return POST(req);
-}
+// POST /api/auth/verify (the CLI also calls GET)
+const verify = withRoute({ name: "POST /api/auth/verify", auth: "user" }, async ({ user }) =>
+    Response.json({ userId: user.userId, email: user.email }),
+);
+
+export const POST = verify;
+export const GET = verify;

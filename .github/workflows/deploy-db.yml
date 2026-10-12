@@ -1,0 +1,64 @@
+name: Deploy database
+
+# Applies Prisma migrations and syncs content/kb into the production database, then refreshes
+# the cached library pages. Both steps are idempotent. Vercel deploys the app itself from the
+# same push; keep migrations additive so either can land first.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "prisma/**"
+      - "content/kb/**"
+      - "packages/kb/**"
+      - ".github/workflows/deploy-db.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      # Migrations and ingestion use the direct (non-pooled) connection.
+      DATABASE_URL: ${{ secrets.DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      # Must match the provider used by the deployed app.
+      EMBEDDINGS_PROVIDER: ${{ vars.EMBEDDINGS_PROVIDER || 'local' }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache embedding model
+        if: env.EMBEDDINGS_PROVIDER != 'cloudflare'
+        uses: actions/cache@v4
+        with:
+          path: apps/web/models
+          key: embedding-model-bge-small-en-v1.5-q8
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Sync knowledge base
+        run: npm run kb:sync
+
+      - name: Refresh library pages
+        if: vars.APP_URL != ''
+        run: |
+          curl -fsS -X POST "${{ vars.APP_URL }}/api/revalidate" \
+            -H "Authorization: Bearer ${{ secrets.REVALIDATE_SECRET }}"

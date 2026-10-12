@@ -77,7 +77,6 @@ hagit push
 | `hagit branch -d <habit>`    | Delete a habit                       | `hagit branch -d exercise`        |
 | `hagit checkout <habit>`     | Switch to a habit                    | `hagit checkout reading`          |
 | `hagit commit -m <message>`  | Record a habit action                | `hagit commit -m "read 20 pages"` |
-| `hagit commit -d <commitId>` | Delete a commit                      | `hagit commit -d 123`             |
 | `hagit log`                  | Show commit history (per-habit numbered) | `hagit log`                       |
 | `hagit status`               | Show workspace state                 | `hagit status`                    |
 | `hagit reset`                | Clear local commits                  | `hagit reset`                     |

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { signOut } from "next-auth/react";
 import type { AuthUser } from "@hagit/types";
 
 interface AuthState {
@@ -6,7 +7,8 @@ interface AuthState {
     isLoading: boolean;
     setUser: (user: AuthUser | null) => void;
     setLoading: (loading: boolean) => void;
-    logout: () => void;
+    /** Clears the API token and ends the Auth.js session (OAuth users). */
+    logout: () => Promise<void>;
     hydrate: () => void;
 }
 
@@ -24,10 +26,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     setLoading: (loading) => set({ isLoading: loading }),
 
-    logout: () => {
+    logout: async () => {
         localStorage.removeItem("hagit_token");
         localStorage.removeItem("hagit_user");
         set({ user: null });
+        // Without this the dashboard's session bridge would silently sign OAuth users back in.
+        await signOut({ redirect: false }).catch(() => undefined);
     },
 
     hydrate: () => {

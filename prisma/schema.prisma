@@ -4,8 +4,17 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime connection. On Supabase use the pooled URL (port 6543, ?pgbouncer=true&connection_limit=1).
+  url       = env("DATABASE_URL")
+  // Migrations need a direct (non-pooled) connection (port 5432).
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  EDITOR
+  ADMIN
 }
 
 model User {
@@ -15,12 +24,49 @@ model User {
   name          String?
   image         String?
   emailVerified DateTime?
+  role          Role      @default(USER)
+  // Bumped to revoke every API token issued to this user.
+  tokenVersion  Int       @default(0)
   createdAt     DateTime  @default(now())
 
-  commits  Commit[]
-  habits   Habit[]
-  accounts Account[]
-  sessions Session[]
+  commits    Commit[]
+  habits     Habit[]
+  accounts   Account[]
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  kbArticles    KbArticle[]
+  preference    UserPreference?
+  notifications NotificationLog[]
+}
+
+// Per-user settings, including what the scheduled jobs need (timezone, notification choices).
+model UserPreference {
+  userId              Int      @id
+  // IANA timezone used for nightly reminders and weekly reports.
+  timezone            String   @default("UTC")
+  // Colour palette for the dashboard and reports.
+  palette             String   @default("classic")
+  nudgeEnabled        Boolean  @default(false)
+  // Local hour (0-23) after which the nightly reminder is sent.
+  nudgeHour           Int      @default(21)
+  // Unguessable ntfy topic; ntfy.sh topics are public, so this acts as a shared secret.
+  ntfyTopic           String?  @unique
+  weeklyReportEnabled Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Record of privileged actions taken in the admin console.
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }
 
 model Habit {
@@ -41,10 +87,13 @@ model Commit {
   timestamp DateTime
   habitId   Int
   userId    Int
+  // Client-generated id (CLI / extension) that makes pushes safe to retry.
+  clientId  String?
   createdAt DateTime @default(now())
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, clientId])
   @@index([userId])
   @@index([habitId])
   @@index([userId, timestamp])
@@ -89,4 +138,106 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ── Knowledge base ─────────────────────────────────────────────────────────
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ArticleOrigin {
+  // Synced from content/kb/*.md in the repository
+  REPO
+  // Created or edited in the admin console (never overwritten by repo sync)
+  ADMIN
+}
+
+model KbArticle {
+  id             Int           @id @default(autoincrement())
+  slug           String        @unique
+  title          String
+  summary        String
+  body           String        @db.Text
+  tags           String[]
+  sources        Json          @default("[]")
+  status         ArticleStatus @default(DRAFT)
+  origin         ArticleOrigin @default(ADMIN)
+  readingMinutes Int           @default(1)
+  // Hash of the indexed content; unchanged articles are not re-embedded.
+  contentHash    String        @default("")
+  authorId       Int?
+  publishedAt    DateTime?
+  indexedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  chunks         KbChunk[]
+
+  @@index([status])
+}
+
+// Retrieval units. Only published articles have chunks. At this scale an exact
+// (sequential) vector scan is fast and exact; add an HNSW index past ~20k chunks.
+model KbChunk {
+  id          Int                         @id @default(autoincrement())
+  articleId   Int
+  ordinal     Int
+  heading     String
+  content     String                      @db.Text
+  tokenCount  Int
+  contentHash String
+  // bge-small-en-v1.5, CLS pooling, L2-normalised
+  embedding   Unsupported("vector(384)")
+  article     KbArticle                   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, ordinal])
+}
+
+// ── Scheduled jobs ─────────────────────────────────────────────────────────
+
+enum NotificationKind {
+  NUDGE
+  WEEKLY_REPORT
+  TEST
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  SKIPPED
+  FAILED
+}
+
+// One row per user, kind and period (local date for nudges, ISO week for reports). The unique
+// key makes the jobs idempotent: a retried or duplicate tick never sends the same thing twice.
+model NotificationLog {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  kind      NotificationKind
+  periodKey String
+  status    DeliveryStatus   @default(PENDING)
+  attempts  Int              @default(1)
+  error     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, periodKey])
+  @@index([createdAt])
+}
+
+model JobRun {
+  id         Int       @id @default(autoincrement())
+  job        String
+  // running | success | failed
+  status     String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  durationMs Int?
+  stats      Json?
+  error      String?
+
+  @@index([job, startedAt])
 }

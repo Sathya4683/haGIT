@@ -52,6 +52,9 @@ apps/extension/hagit-extension-v2.0.0.zip
 /auth_and_actions.md
 /*.plan.md
 /*.spec.md
+# Personal setup / deployment notes (kept local, not part of the codebase)
+/docs/
+/Resume*.pdf
 
 .turbo
 .next
@@ -60,3 +63,16 @@ apps/web/.env
 apps/web/node_modules
 apps/web/dump.sql
 dump.sql
+
+# downloaded embedding model files (fetched at build time)
+apps/web/models/
+
+# observability stack secrets
+infra/observability/.env
+
+# terraform state, plans and local variables
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfplan
+infra/terraform/terraform.tfvars

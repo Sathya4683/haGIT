@@ -22,3 +22,19 @@ export interface HabitData {
     logCheckIn?(habit: string, message: string): Promise<CheckIn>;
     createHabit?(name: string): Promise<HabitSummary>;
 }
+
+/** A passage from haGIT's curated knowledge base (shared by all users, not personal data). */
+export interface KbSnippet {
+    articleId: number;
+    slug: string;
+    title: string;
+    /** Section path, e.g. "Never miss twice > Getting back on track". */
+    heading: string;
+    content: string;
+    url?: string;
+}
+
+/** Read-only search over the knowledge base. */
+export interface KnowledgeBase {
+    search(query: string, opts?: { limit?: number }): Promise<KbSnippet[]>;
+}

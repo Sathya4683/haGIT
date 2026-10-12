@@ -1,58 +1,47 @@
 export const runtime = "nodejs";
-import { NextRequest } from "next/server";
-import { requireAuth, unauthorized, badRequest, serverError } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { limitUserOperation, rateLimitExceeded } from "@/lib/rate-limit";
+
+import { z } from "zod";
+import { rateLimits } from "@/lib/rate-limit";
+import { withRoute } from "@/server/http/withRoute";
+import { clientId, commitMessage, commitTimestamp, habitName } from "@/server/http/schemas";
+import { pushCommits } from "@/server/commits/push";
+
+const body = z.object({
+    commits: z
+        .array(
+            z.object({
+                habitName,
+                message: commitMessage,
+                timestamp: commitTimestamp.optional(),
+                clientId: clientId.optional(),
+            }),
+            { error: "commits array is required." },
+        )
+        .min(1, "commits array is required.")
+        .max(100, "A maximum of 100 commits can be pushed at once."),
+});
 
 // POST /api/commits/push
-// Body: { commits: [{ habitName, message, timestamp }] }
-export async function POST(req: NextRequest) {
-    try {
-        const payload = requireAuth(req);
-        const rateLimit = await limitUserOperation(payload.userId, "commits");
-        if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.retryAfter);
-        const body = await req.json();
-        const commits: { habitName: string; message: string; timestamp: string }[] = body.commits;
-
-        if (!Array.isArray(commits) || commits.length === 0)
-            return badRequest("commits array is required.");
-        if (commits.length > 100)
-            return badRequest("A maximum of 100 commits can be pushed at once.");
-
-        const results = [];
-        for (const c of commits) {
-            const { habitName, message, timestamp } = c;
-            if (!habitName || !message) return badRequest("habitName and message are required.");
-
-            // Upsert habit
-            let habit = await prisma.habit.findUnique({
-                where: { userId_name: { userId: payload.userId, name: habitName } },
-            });
-            if (!habit) {
-                habit = await prisma.habit.create({ data: { name: habitName, userId: payload.userId } });
-            }
-
-            const commit = await prisma.commit.create({
-                data: {
-                    message,
-                    timestamp: timestamp ? new Date(timestamp) : new Date(),
-                    habitId: habit.id,
-                    userId: payload.userId,
-                },
-            });
-            results.push({
-                id: commit.id,
-                message: commit.message,
-                habitName,
-                timestamp: commit.timestamp.toISOString(),
-                synced: true,
-            });
-        }
-
-        return Response.json({ success: true, commits: results }, { status: 201 });
-    } catch (e: unknown) {
-        if ((e as Error).message === "UNAUTHORIZED") return unauthorized();
-        console.error("[POST /api/commits/push]", e);
-        return serverError();
-    }
-}
+// Body: { commits: [{ habitName, message, timestamp?, clientId? }] }
+// All-or-nothing; commits whose clientId was already stored are returned without duplicating.
+export const POST = withRoute(
+    {
+        name: "POST /api/commits/push",
+        auth: "user",
+        body,
+        rateLimit: ({ user }) => rateLimits.userWrite(user.userId, "commits"),
+    },
+    async ({ user, body }) => {
+        const result = await pushCommits(user.userId, body.commits);
+        return Response.json(
+            {
+                success: true,
+                count: result.commits.length,
+                created: result.created,
+                duplicates: result.duplicates,
+                commits: result.commits,
+            },
+            { status: 201 },
+        );
+    },
+);

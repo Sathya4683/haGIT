@@ -7,11 +7,22 @@
         "packages/*"
     ],
     "devDependencies": {
+        "tsx": "^4.23.15",
         "turbo": "^2.8.16"
     },
     "scripts": {
         "dev": "turbo run dev",
         "build": "turbo run build",
-        "lint": "turbo run lint"
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "typecheck": "turbo run typecheck",
+        "db:migrate": "prisma migrate deploy --schema=prisma/schema.prisma",
+        "db:migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
+        "admin:promote": "node scripts/admin-promote.mjs",
+        "fetch-model": "node packages/kb/scripts/fetch-model.mjs",
+        "kb:sync": "tsx packages/kb/scripts/sync.ts",
+        "kb:reindex": "tsx packages/kb/scripts/sync.ts --force",
+        "kb:eval": "tsx packages/kb/scripts/eval.ts",
+        "jobs:schedule": "node scripts/jobs-schedule.mjs"
     }
 }

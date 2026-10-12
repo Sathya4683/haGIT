@@ -12,6 +12,7 @@ An [MCP](https://modelcontextprotocol.io) server for [haGIT](https://github.com/
 | `search_checkins` | Keyword search over check-in messages                                  |
 | `log_checkin`     | Log a check-in for an existing habit (it never creates habits)         |
 | `create_habit`    | Create a new habit (refuses duplicates, ignoring case)                 |
+| `search_knowledge_base` | Search haGIT's research-backed habit articles (passages tagged `KB<id>` with links) |
 
 The stats are computed by the same code (`packages/coach-core`) that powers the haGIT web coach.
 

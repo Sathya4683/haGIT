@@ -8,7 +8,7 @@ async function initCommand() {
     const spinner = ora('Initializing haGIT...').start();
 
     if (StateManager.isInitialized()) {
-        spinner.fail('haGIT is already initialized');
+        spinner.info('haGIT is already initialized');
         return;
     }
 
@@ -17,6 +17,8 @@ async function initCommand() {
     console.log(chalk.cyan('\nNext steps:'));
     console.log('  1. Login to the web app and get your token');
     console.log('  2. Run: hagit login --token <YOUR_TOKEN>');
+    console.log(chalk.gray('\nhaGIT sends anonymous command timings and error messages (never habit data)'));
+    console.log(chalk.gray('to help fix bugs. Turn it off with: hagit telemetry off'));
 }
 
 // hagit login --token <TOKEN>
@@ -81,6 +83,7 @@ async function deleteHabitCommand(habitName) {
 
     try {
         await ApiClient.deleteHabit(habitName);
+        StateManager.removeCommitsForHabit(habitName);
 
         const currentHabit = StateManager.readHEAD();
 
@@ -117,6 +120,7 @@ async function checkoutCommand(habitName) {
             spinner.fail(`Habit '${habitName}' not found`);
             console.log(chalk.yellow('\nAvailable habits:'));
             habits.forEach(h => console.log(`  - ${h.name}`));
+            process.exitCode = 1;
             return;
         }
 
@@ -180,10 +184,10 @@ async function logCommand(limit) {
         }
     }
 
-    // Merge and deduplicate
+    // Merge and deduplicate (two commits can share a timestamp, so key on message as well)
     const allCommits = [...localCommits, ...remoteCommits];
     const uniqueCommits = Array.from(
-        new Map(allCommits.map(c => [c.timestamp, c])).values()
+        new Map(allCommits.map(c => [`${c.timestamp}|${c.message}`, c])).values()
     ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     const commitsToShow = uniqueCommits.slice(0, limit);
@@ -217,6 +221,10 @@ async function logCommand(limit) {
 async function listBranchesCommand() {
     if (!StateManager.isInitialized()) {
         throw new Error('haGIT not initialized. Run: hagit init');
+    }
+
+    if (!StateManager.isAuthenticated()) {
+        throw new Error('Not authenticated. Run: hagit login --token <TOKEN>');
     }
 
     const spinner = ora('Loading habits...').start();
@@ -329,20 +337,13 @@ async function pushCommand() {
     const spinner = ora(`Pushing ${unpushedCommits.length} commit(s)...`).start();
 
     try {
-        // Transform commits for API
-        const commitsToSync = unpushedCommits.map(c => ({
-            habitName: c.habitName,
-            message: c.message,
-            timestamp: c.timestamp
-        }));
-
-        const result = await ApiClient.pushCommits(commitsToSync);
-
-        StateManager.clearCommits();
+        // Each accepted batch is removed locally right away; commits recorded while the push
+        // is running stay queued for the next push.
+        const result = await ApiClient.pushCommits(unpushedCommits, (ids) => StateManager.removeCommits(ids));
         spinner.succeed(`Successfully pushed ${result.count} commit(s)`);
         console.log(chalk.green('✓ All commits synced!'));
     } catch (error) {
-        spinner.fail('Failed to push commits');
+        spinner.fail(error.pushed ? `Pushed ${error.pushed} commit(s) before failing` : 'Failed to push commits');
         throw error;
     }
 }

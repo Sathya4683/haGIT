@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: apps/web/models
+          key: embedding-model-bge-small-en-v1.5-q8
+
+      - name: Typecheck
+        run: |
+          npx tsc --noEmit -p apps/web
+          npx tsc --noEmit -p apps/extension
+          npx tsc --noEmit -p packages/coach-core
+          npx tsc --noEmit -p packages/kb
+          npx tsc --noEmit -p packages/mcp
+
+      - name: Unit tests
+        run: |
+          npm test -w hagit-frontend
+          npm test -w @hagit/coach-core
+          npm test -w @hagit/kb
+
+      - name: Build web app
+        run: npm run build -w hagit-frontend
+        env:
+          # Build-time placeholders only; nothing connects to them.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-placeholder-secret
+          JWT_SECRET: ci-placeholder-secret
+
+      - name: Build extension and MCP server
+        run: |
+          npm run build -w hagit-extension
+          npm run build -w hagit-mcp
+
+  database:
+    name: Migrations, integration tests, retrieval quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: hagit
+          POSTGRES_PASSWORD: hagit
+          POSTGRES_DB: hagit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hagit -d hagit"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://hagit:hagit@localhost:5432/hagit
+      DIRECT_URL: postgresql://hagit:hagit@localhost:5432/hagit
+      TEST_DATABASE_URL: postgresql://hagit:hagit@localhost:5432/hagit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: apps/web/models
+          key: embedding-model-bge-small-en-v1.5-q8
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Check schema and migrations are in sync
+        run: |
+          echo "CREATE DATABASE shadow;" | npx prisma db execute --stdin --schema prisma/schema.prisma
+          npx prisma migrate diff --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://hagit:hagit@localhost:5432/shadow --exit-code \
+            || { echo "::error::prisma/schema.prisma has changes without a migration"; exit 1; }
+
+      - name: Integration tests
+        run: npx vitest run src/server/commits/push.int.test.ts
+        working-directory: apps/web
+
+      - name: Sync knowledge base
+        run: npm run kb:sync
+
+      - name: Retrieval quality (Recall@4, MRR)
+        run: npm run kb:eval

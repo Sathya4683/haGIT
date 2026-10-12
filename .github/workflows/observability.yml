@@ -1,0 +1,52 @@
+name: Deploy observability
+
+# Copies infra/observability to the monitoring VM and restarts the stack. The VM keeps its own
+# .env (secrets), which is never overwritten. Requires repository variables EC2_HOST and
+# EC2_USER and the secret EC2_SSH_KEY.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/observability/**"
+      - ".github/workflows/observability.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-observability
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: vars.EC2_HOST != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HOST: ${{ vars.EC2_HOST }}
+      USER: ${{ vars.EC2_USER || 'ubuntu' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload configuration
+        run: rsync -az --delete --exclude ".env" infra/observability/ "$USER@$HOST:hagit-observability/"
+
+      - name: Restart stack
+        run: |
+          ssh "$USER@$HOST" '
+            set -e
+            cd hagit-observability
+            docker compose pull --quiet
+            docker compose up -d --remove-orphans
+            docker compose restart grafana
+            curl -fsS -X POST http://127.0.0.1:9090/-/reload
+          '

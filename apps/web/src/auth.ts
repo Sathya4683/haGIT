@@ -1,9 +1,17 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import type { Adapter } from "next-auth/adapters";
-import Google from "next-auth/providers/google";
-import GitHub from "next-auth/providers/github";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/auth";
+import { can, isAdminHost, type Role } from "@/lib/permissions";
+import { checkPolicy, rateLimits } from "@/lib/rate-limit";
+import { authConfig, type AppToken } from "./auth.config";
+
+/** How long a role read from the database is trusted before it is checked again. */
+const ROLE_REFRESH_MS = 5 * 60 * 1000;
 
 function prismaUserId(id: string) {
     const value = Number(id);
@@ -36,13 +44,13 @@ function intIdPrismaAdapter(): Adapter {
     return {
         ...adapter,
         async createUser(data) {
-            return withStringUserId(await adapter.createUser!(data));
+            return withStringUserId(await adapter.createUser!({ ...data, email: normalizeEmail(data.email) }));
         },
         async getUser(id) {
             return withStringUserIdOrNull(await adapter.getUser!(adapterIdAsPrismaInt(id)));
         },
         async getUserByEmail(email) {
-            return withStringUserIdOrNull(await adapter.getUserByEmail!(email));
+            return withStringUserIdOrNull(await adapter.getUserByEmail!(normalizeEmail(email)));
         },
         async getUserByAccount(account) {
             return withStringUserIdOrNull(await adapter.getUserByAccount!(account));
@@ -66,49 +74,101 @@ function intIdPrismaAdapter(): Adapter {
 }
 
 // Augment NextAuth's Session so consumers can read `session.user.userId` as a
-// strongly-typed number. We only ADD userId here — we do NOT redeclare `id`
+// strongly-typed number. We only ADD fields here — we do NOT redeclare `id`
 // (the base User.id is `string | undefined`; redeclaring it as `number` would
 // produce an incompatible intersection and TypeScript narrows it to `never`).
 declare module "next-auth" {
     interface Session {
         user: {
             userId: number;
+            role: Role;
         } & DefaultSession["user"];
+        /** User.tokenVersion at sign-in; a mismatch means the session was revoked. */
+        tokenVersion: number;
     }
 }
 
+const adminCredentials = z.object({
+    email: z.string().trim().toLowerCase().email(),
+    password: z.string().min(1).max(128),
+});
+
+function requestHost(request: Request) {
+    return request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+}
+
+/**
+ * Password sign-in for the admin console only. Regular users authenticate through
+ * /api/auth/login (API tokens); this provider accepts EDITOR/ADMIN accounts, and only on the
+ * admin host when one is configured.
+ */
+const AdminCredentials = Credentials({
+    id: "admin-credentials",
+    name: "Admin",
+    credentials: { email: {}, password: {} },
+    async authorize(raw, request) {
+        if (process.env.ADMIN_HOST && !isAdminHost(requestHost(request))) return null;
+
+        const parsed = adminCredentials.safeParse(raw);
+        if (!parsed.success) return null;
+        const { email, password } = parsed.data;
+
+        const policies = [rateLimits.ip(request, "admin-login", rateLimits.perMinute(10)), rateLimits.loginEmail(email)];
+        for (const policy of policies) {
+            if (!(await checkPolicy({ ...policy, failClosed: true })).allowed) return null;
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user?.password || !can(user.role, "admin:access")) return null;
+        if (!(await bcrypt.compare(password, user.password))) return null;
+
+        return { id: String(user.id), email: user.email, name: user.name, image: user.image };
+    },
+});
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    ...authConfig,
     adapter: intIdPrismaAdapter(),
-    session: { strategy: "jwt" },
-    providers: [
-        Google({ allowDangerousEmailAccountLinking: true }),
-        GitHub({
-            allowDangerousEmailAccountLinking: true,
-            // GitHub began sending the `iss` parameter on OAuth callbacks
-            // (RFC 9207) in 2026. Auth.js's oauth4webapi strictly validates
-            // it against the provider's `issuer` config, falling back to
-            // "https://authjs.dev" if not set explicitly — which then fails
-            // every GitHub sign-in with `Configuration`. Pin it here so the
-            // validator matches what GitHub actually sends.
-            // Refs: https://datatracker.ietf.org/doc/html/rfc9207
-            //       https://github.com/nextauthjs/next-auth/issues/13409
-            issuer: "https://github.com/login/oauth",
-        }),
-    ],
+    providers: [...authConfig.providers, AdminCredentials],
+    events: {
+        // Email/password signup does not verify the address, and OAuth providers are allowed to
+        // link to an existing account by email. Without this, someone could register a victim's
+        // email with a password before the victim ever signs in with Google/GitHub, and keep
+        // access afterwards. The first successful OAuth link proves ownership of the address, so
+        // drop any unverified password and revoke previously issued API tokens.
+        async linkAccount({ user }) {
+            const id = Number(user.id);
+            if (!Number.isSafeInteger(id)) return;
+            await prisma.user.updateMany({
+                where: { id, emailVerified: null, password: { not: null } },
+                data: { password: null, emailVerified: new Date(), tokenVersion: { increment: 1 } },
+            });
+            await prisma.user.updateMany({
+                where: { id, emailVerified: null },
+                data: { emailVerified: new Date() },
+            });
+        },
+    },
     callbacks: {
+        ...authConfig.callbacks,
         async jwt({ token, user }) {
-            // The adapter exposes Auth.js IDs as strings; the app JWT uses Int IDs.
-            if (user) {
-                (token as unknown as { userId: number }).userId = Number(user.id);
+            const t = token as AppToken;
+            // The adapter exposes Auth.js IDs as strings; the app uses Int IDs.
+            if (user) t.userId = Number(user.id);
+            if (!t.userId) return token;
+
+            if (user || Date.now() - (t.roleCheckedAt ?? 0) > ROLE_REFRESH_MS) {
+                // Read after the linkAccount event, which may have just bumped the version.
+                const row = await prisma.user.findUnique({
+                    where: { id: t.userId },
+                    select: { role: true, tokenVersion: true },
+                });
+                if (!row) return null; // account deleted: end the session
+                if (user) t.tv = row.tokenVersion;
+                t.role = row.role;
+                t.roleCheckedAt = Date.now();
             }
             return token;
-        },
-        async session({ session, token }) {
-            const userId = (token as unknown as { userId?: number }).userId;
-            if (typeof userId === "number" && Number.isFinite(userId)) {
-                session.user.userId = userId;
-            }
-            return session;
         },
     },
 });

@@ -19,13 +19,54 @@ export function setBaseURL(url: string): void {
     storage.set(STORAGE_KEYS.BASE_URL, baseURL);
 }
 
+/** Updates the in-memory base URL without persisting it (used when hydrating from storage). */
+export function applyBaseURL(url: string): void {
+    baseURL = url.replace(/\/$/, "");
+}
+
+const CLIENT_HEADER = `hagit-extension/${typeof chrome !== "undefined" && chrome.runtime?.getManifest ? chrome.runtime.getManifest().version : "dev"}`;
+
+let unauthorizedHandler: (() => void) | null = null;
+
+/** Called when the server rejects the stored token (expired, rotated or revoked). */
+export function onUnauthorized(handler: () => void) {
+    unauthorizedHandler = handler;
+}
+
+/** Reports server and network failures (not 4xx) to the app's telemetry endpoint. */
+function reportFailure(error: AxiosError) {
+    if (error.response && error.response.status < 500) return;
+    void storage.get<string>(STORAGE_KEYS.TOKEN).then((token) =>
+        fetch(`${baseURL}/api/telemetry`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }) },
+            body: JSON.stringify({
+                source: "extension",
+                version: CLIENT_HEADER.split("/")[1],
+                events: [{
+                    type: "error",
+                    name: error.response ? `HTTP ${error.response.status}` : error.code ?? "NetworkError",
+                    message: error.message,
+                    route: error.config?.url?.split("?")[0],
+                }],
+            }),
+        }).catch(() => undefined),
+    );
+}
+
 // Build Axios instance dynamically so it picks up baseURL changes
-function client() {
-    return axios.create({
-        baseURL,
-        headers: { "Content-Type": "application/json" },
+function client(base = baseURL) {
+    const ax = axios.create({
+        baseURL: base,
+        headers: { "Content-Type": "application/json", "X-Hagit-Client": CLIENT_HEADER },
         timeout: 10_000,
     });
+    ax.interceptors.response.use(undefined, (error: AxiosError) => {
+        if (error.response?.status === 401) unauthorizedHandler?.();
+        reportFailure(error);
+        return Promise.reject(error);
+    });
+    return ax;
 }
 
 async function withAuth() {
@@ -38,7 +79,11 @@ async function withAuth() {
 }
 
 function extractError(e: unknown): string {
-    const err = e as AxiosError<{ error?: string }>;
+    const err = e as AxiosError<{ error?: string; retryAfter?: number }>;
+    if (err.response?.status === 401) return "Your token expired. Paste a new one from the dashboard.";
+    if (err.response?.status === 429 && err.response.data?.retryAfter) {
+        return `Too many requests. Try again in ${err.response.data.retryAfter}s.`;
+    }
     return err.response?.data?.error ?? err.message ?? "Unknown error";
 }
 
@@ -46,11 +91,15 @@ function extractError(e: unknown): string {
 
 export const authApi = {
     verify: async (token: string, url?: string): Promise<AuthUser> => {
-        const base = url?.replace(/\/$/, "") ?? baseURL;
+        const base = url?.trim() ? url.trim().replace(/\/$/, "") : baseURL;
+        // A plain instance: a 401 here means "wrong token", not "log the current user out".
         const res = await axios.post<{ userId: number; email: string }>(
             `${base}/api/auth/verify`,
             {},
-            { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+            {
+                timeout: 10_000,
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "X-Hagit-Client": CLIENT_HEADER },
+            }
         );
         return { userId: res.data.userId, email: res.data.email, token };
     },
@@ -102,12 +151,16 @@ export const habitsApi = {
 // ── Commits ─────────────────────────────────────────────────────────────────
 
 export const commitsApi = {
-    push: async (habitName: string, message: string): Promise<void> => {
+    /** Returns the stored commit. The clientId makes a retried request safe. */
+    push: async (habitName: string, message: string): Promise<Commit> => {
         try {
             const ax = await withAuth();
-            await ax.post("/api/commits/push", {
-                commits: [{ habitName, message, timestamp: new Date().toISOString() }],
-            });
+            const res = await ax.post<{ commits: { id: number; habitName: string; message: string; timestamp: string }[] }>(
+                "/api/commits/push",
+                { commits: [{ habitName, message, timestamp: new Date().toISOString(), clientId: crypto.randomUUID() }] },
+            );
+            const c = res.data.commits[0];
+            return { id: String(c.id), habitName: c.habitName, message: c.message, timestamp: c.timestamp, synced: true };
         } catch (e) { throw new Error(extractError(e)); }
     },
 

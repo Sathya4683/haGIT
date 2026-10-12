@@ -1,4 +1,6 @@
 import { weekdayOf } from "./stats";
+import { formatLibrary } from "./citations";
+import type { KbSnippet } from "./data";
 
 export const COACH_SYSTEM_PROMPT = `You are haGIT Coach, the habit coach inside haGIT, a git-style habit tracker for developers (habits are "branches", check-ins are "commits").
 
@@ -10,6 +12,12 @@ Rules:
 - Be encouraging and direct. No lectures, no guilt, no medical or mental-health claims.
 - Plain text only: no markdown (no **, no #). Short lines; "- " for bullets.
 - Never use em dashes; use commas, colons or full stops instead.
+
+Knowledge base:
+- A "Library context" block or the search_knowledge_base tool may give you passages from haGIT's research-backed articles, each tagged like [KB12].
+- Use them only for general advice that fits the user's situation. Claims about the user still come only from their data.
+- End every line or bullet that draws on a passage with its tag, e.g. "- Plan a fallback for Fridays [KB7]". Use only tags you were given, never invent one, and don't tag lines that don't use a passage.
+- If no passage is relevant, ignore the library and don't cite anything.
 
 For a review, use exactly these sections:
 Summary: (two lines max)
@@ -30,6 +38,8 @@ export interface CoachRequest {
     days?: number;
     /** The last review the user got, so the coach can follow up on it. */
     previousReview?: string;
+    /** Knowledge-base passages retrieved for this request. */
+    library?: KbSnippet[];
 }
 
 export function buildUserMessage(req: CoachRequest, ctx: { today: string; tz: string; habits: unknown }): string {
@@ -40,6 +50,7 @@ export function buildUserMessage(req: CoachRequest, ctx: { today: string; tz: st
     if (req.previousReview) {
         parts.push(`Your previous review for me:\n"""\n${req.previousReview}\n"""`);
     }
+    if (req.library?.length) parts.push(formatLibrary(req.library));
     parts.push(
         req.mode === "review"
             ? `Write my habit review for the last ${req.days ?? 7} days.`
