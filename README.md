@@ -98,20 +98,27 @@ Pick from eight palettes in light or dark mode. Settings also hold your nightly 
 
 In the evening haGIT sends a push notification through the free [ntfy](https://ntfy.sh) app, listing the habits you haven't committed yet, with streaks at risk first. Scan the QR code in Settings once and you're subscribed.
 
-<!--
-  ntfy screenshots go here. Drop the images into assets/readme/ and uncomment:
-  <p align="center">
-    <img src="assets/readme/ntfy-reminder.png" alt="Nightly reminder on a phone" width="300">
-    <img src="assets/readme/ntfy-alert.png" alt="Monitoring alert on a phone" width="300">
-  </p>
--->
+<details>
+<summary><b>Notifications on a phone</b></summary>
+<br>
+<table align="center">
+<tr>
+<td><img src="assets/readme/ntfy-reminder.webp" alt="ntfy on a phone: an evening reminder listing five open habits with their streaks, and the connection test" width="300"></td>
+<td><img src="assets/readme/ntfy-alert.webp" alt="ntfy on a phone: a Grafana alert from the monitoring stack with links to the alert and to silence it" width="300"></td>
+</tr>
+<tr>
+<td align="center"><sub>Evening reminder</sub></td>
+<td align="center"><sub>Monitoring alert</sub></td>
+</tr>
+</table>
+</details>
 
 Every Monday you get an email with a one-page PDF of your week: commits, active days, your best habit, a 12-week heatmap, a note from the coach and three articles picked for where you are.
 
 <table>
 <tr>
 <td width="50%"><img src="assets/readme/weekly-report.webp" alt="The weekly PDF report"></td>
-<td width="50%"><img src="assets/readme/weekly-email.webp" alt="The weekly report email"></td>
+<td width="50%"><img src="assets/readme/weekly-email.webp" alt="The weekly report email in Gmail: commits, active days, best habit, a coach note, habits this week against last, and further reading"></td>
 </tr>
 <tr>
 <td align="center"><sub>The PDF</sub></td>
