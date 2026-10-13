@@ -17,7 +17,7 @@ export default async function AdminLoginPage() {
     const base = adminBasePath();
     const session = await auth();
     if (session?.user && can(session.user.role, "admin:access")) redirect(base || "/");
-    // On its own host the console needs its own GitHub OAuth App (see auth.config.ts); at /admin
+    // On its own host the console uses the admin GitHub OAuth App (see auth.config.ts); at /admin
     // on the main host the regular one works.
     const githubProvider = base
         ? (process.env.AUTH_GITHUB_ID ? "github" : null)

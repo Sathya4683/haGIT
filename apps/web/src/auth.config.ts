@@ -38,8 +38,8 @@ export const authConfig = {
     providers: [
         Google({ allowDangerousEmailAccountLinking: true }),
         GitHub(githubOptions),
-        // A GitHub OAuth App accepts a single callback host, so the admin console signs in
-        // through a second app registered for ADMIN_HOST, with the callback URL
+        // The admin console signs in through its own GitHub OAuth App, so GitHub's consent
+        // screen names the console. Its callback URL is
         // https://<admin host>/api/auth/callback/github-admin.
         ...(process.env.AUTH_GITHUB_ADMIN_ID
             ? [GitHub({
