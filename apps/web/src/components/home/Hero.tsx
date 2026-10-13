@@ -48,11 +48,17 @@ export function Hero({ email, habits, weekCommits, lastWeekCommits, totalCommits
             <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-brand-500/10 blur-2xl pointer-events-none" aria-hidden />
             <div className="relative p-5 sm:p-7 grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
                 <div className="min-w-0 space-y-4">
-                    <div className="space-y-1.5 pr-16 md:pr-0">
+                    <div className="space-y-1.5">
+                        {/* Phones: the ring floats right, so only the lines beside it wrap around it. */}
+                        <div className="md:hidden float-right ml-3 -mt-1 -mb-4">
+                            <ProgressRing value={done} max={habits.length} size={52} stroke={6} label={`${done} of ${habits.length} habits done today`}>
+                                <span className="font-mono text-sm font-black">{done}/{habits.length}</span>
+                            </ProgressRing>
+                        </div>
                         <p className="font-mono text-xs text-[rgb(var(--ink-muted))] flex items-center gap-1.5">
                             <Icon size={13} /> {format(now, "EEEE, d MMMM")}
                         </p>
-                        <h1 className="text-[28px] sm:text-4xl font-black tracking-tight leading-[1.1]">
+                        <h1 className="text-[28px] sm:text-4xl font-black tracking-tight leading-[1.1] [overflow-wrap:anywhere]">
                             {text}, {displayName(email)}
                             {allDone && <Sparkles className="inline ml-2 text-brand-500 -mt-1" size={26} />}
                         </h1>
@@ -94,12 +100,6 @@ export function Hero({ email, habits, weekCommits, lastWeekCommits, totalCommits
                     <ProgressRing value={done} max={habits.length} size={132} stroke={12} label={`${done} of ${habits.length} habits done today`}>
                         <span className="font-mono text-3xl font-black leading-none">{done}<span className="text-[rgb(var(--ink-muted))] text-lg">/{habits.length}</span></span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-[rgb(var(--ink-muted))] mt-1">today</span>
-                    </ProgressRing>
-                </div>
-                {/* Compact progress on phones */}
-                <div className="md:hidden flex items-center gap-3 -mt-2 order-first justify-end absolute right-4 top-4">
-                    <ProgressRing value={done} max={habits.length} size={56} stroke={7} label={`${done} of ${habits.length} habits done today`}>
-                        <span className="font-mono text-sm font-black">{done}/{habits.length}</span>
                     </ProgressRing>
                 </div>
             </div>

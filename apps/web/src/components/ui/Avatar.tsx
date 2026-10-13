@@ -7,7 +7,9 @@ export function initialsOf(email: string | null | undefined) {
 }
 
 export function displayName(email: string | null | undefined) {
-    const local = (email ?? "").split("@")[0].split(/[._+-]/)[0];
+    // "sathya.n2548@…" → "Sathya", "sathyanarayanan2548@…" → "Sathyanarayanan"
+    const first = (email ?? "").split("@")[0].split(/[._+-]/)[0];
+    const local = first.replace(/\d+$/, "") || first;
     return local ? local.charAt(0).toUpperCase() + local.slice(1) : "there";
 }
 

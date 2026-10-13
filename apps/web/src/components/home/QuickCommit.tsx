@@ -70,19 +70,19 @@ export function QuickCommit({ habits, defaultHabitId, lockHabit, onCommitted }: 
                     <SubmitButton disabled={!habit || !message.trim() || saving} saving={saving} />
                 </div>
             </div>
+            {/* Phones: the picker takes the remaining width and shrinks; the button keeps its size. */}
             <div className="flex sm:hidden items-center gap-2 px-3 pb-2.5 pt-1.5">
-                <HabitPicker habits={habits} value={habitId} onChange={setHabitId} locked={lockHabit} />
-                <div className="flex-1" />
+                <HabitPicker habits={habits} value={habitId} onChange={setHabitId} locked={lockHabit} className="flex-1 min-w-0" />
                 <SubmitButton disabled={!habit || !message.trim() || saving} saving={saving} />
             </div>
         </form>
     );
 }
 
-function HabitPicker({ habits, value, onChange, locked }: { habits: HabitView[]; value?: number; onChange: (id: number) => void; locked?: boolean }) {
+function HabitPicker({ habits, value, onChange, locked, className }: { habits: HabitView[]; value?: number; onChange: (id: number) => void; locked?: boolean; className?: string }) {
     const current = habits.find((h) => h.habitId === value);
     return (
-        <label className="relative flex items-center gap-1.5 h-8 pl-2 pr-1 border border-white/25 font-mono text-xs text-white/80 hover:border-white/50 focus-within:border-white">
+        <label className={`relative flex items-center gap-1.5 h-8 pl-2 pr-1 border border-white/25 font-mono text-xs text-white/80 hover:border-white/50 focus-within:border-white ${className ?? ""}`}>
             <span className="text-white/45">on</span>
             <span className="w-2 h-2 flex-shrink-0" style={{ background: current?.color ?? "transparent" }} />
             <select
@@ -90,7 +90,7 @@ function HabitPicker({ habits, value, onChange, locked }: { habits: HabitView[];
                 disabled={locked || habits.length === 0}
                 onChange={(e) => onChange(Number(e.target.value))}
                 aria-label="Habit"
-                className="bg-transparent outline-none max-w-[9rem] truncate pr-1 disabled:opacity-100 [&>option]:text-black"
+                className="min-w-0 w-full sm:w-auto sm:max-w-[9rem] bg-transparent outline-none truncate pr-1 disabled:opacity-100 [&>option]:text-black"
             >
                 {habits.map((h) => (
                     <option key={h.habitId} value={h.habitId}>{h.habitName}{h.committedToday ? " ✓" : ""}</option>
@@ -105,7 +105,7 @@ function SubmitButton({ disabled, saving }: { disabled: boolean; saving: boolean
         <button
             type="submit"
             disabled={disabled}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-bold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 transition-colors"
+            className="flex-shrink-0 flex items-center gap-1.5 h-8 px-3 text-xs font-bold whitespace-nowrap bg-brand-500 text-white hover:bg-brand-600 disabled:bg-white/10 disabled:text-white/40 disabled:cursor-not-allowed transition-colors"
         >
             {saving ? "Pushing…" : "Commit"} <CornerDownLeft size={12} strokeWidth={2.5} />
         </button>
