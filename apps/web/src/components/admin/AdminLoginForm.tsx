@@ -6,11 +6,13 @@ import { signIn, signOut } from "next-auth/react";
 interface Props {
     base: "" | "/admin";
     googleEnabled: boolean;
+    /** Auth.js provider id for GitHub sign-in on this host, or null to hide the button. */
+    githubProvider: "github" | "github-admin" | null;
     /** Email of a signed-in account that lacks console access, if any. */
     signedInWithoutAccess: string | null;
 }
 
-export function AdminLoginForm({ base, googleEnabled, signedInWithoutAccess }: Props) {
+export function AdminLoginForm({ base, googleEnabled, githubProvider, signedInWithoutAccess }: Props) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -68,13 +70,25 @@ export function AdminLoginForm({ base, googleEnabled, signedInWithoutAccess }: P
                     {loading ? "Signing in…" : "Sign in →"}
                 </button>
             </form>
-            {googleEnabled && (
-                <button
-                    onClick={() => signIn("google", { callbackUrl: home })}
-                    className="btn-press-sm w-full py-2.5 text-sm font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))]"
-                >
-                    Continue with Google
-                </button>
+            {(googleEnabled || githubProvider) && (
+                <div className="space-y-2.5">
+                    {googleEnabled && (
+                        <button
+                            onClick={() => signIn("google", { callbackUrl: home })}
+                            className="btn-press-sm w-full py-2.5 text-sm font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))]"
+                        >
+                            Continue with Google
+                        </button>
+                    )}
+                    {githubProvider && (
+                        <button
+                            onClick={() => signIn(githubProvider, { callbackUrl: home })}
+                            className="btn-press-sm w-full py-2.5 text-sm font-bold border-2 border-[rgb(var(--border))] hover:bg-[rgb(var(--paper-alt))]"
+                        >
+                            Continue with GitHub
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );

@@ -17,6 +17,11 @@ export default async function AdminLoginPage() {
     const base = adminBasePath();
     const session = await auth();
     if (session?.user && can(session.user.role, "admin:access")) redirect(base || "/");
+    // On its own host the console needs its own GitHub OAuth App (see auth.config.ts); at /admin
+    // on the main host the regular one works.
+    const githubProvider = base
+        ? (process.env.AUTH_GITHUB_ID ? "github" : null)
+        : (process.env.AUTH_GITHUB_ADMIN_ID ? "github-admin" : null);
 
     return (
         <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-[rgb(var(--paper))]">
@@ -62,6 +67,7 @@ export default async function AdminLoginPage() {
                     <AdminLoginForm
                         base={base}
                         googleEnabled={Boolean(process.env.AUTH_GOOGLE_ID)}
+                        githubProvider={githubProvider}
                         signedInWithoutAccess={session?.user?.email ?? null}
                     />
                 </div>
