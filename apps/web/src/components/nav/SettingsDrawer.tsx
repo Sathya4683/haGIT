@@ -14,6 +14,7 @@ import { Avatar, displayName } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { TokenSection } from "@/components/settings/TokenSection";
+import { ConnectSection } from "@/components/settings/ConnectSection";
 import { NotificationsSection } from "@/components/settings/NotificationsSection";
 import { ReportSection } from "@/components/settings/ReportSection";
 
@@ -134,6 +135,7 @@ export function SettingsDrawer() {
                     {tab === "account" && (
                         <>
                             <TokenSection />
+                            <ConnectSection />
                             <section className="space-y-2">
                                 <button
                                     onClick={handleLogout}
