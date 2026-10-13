@@ -1,6 +1,9 @@
-// Reuses the CLI's login: `hagit login -t <token>` writes ~/.hagit/config.json
-// (see packages/cli/lib/state.js). Read on every request so a re-login is
-// picked up without restarting the MCP client.
+// Credentials, in order of precedence:
+//   1. HAGIT_TOKEN (and optional HAGIT_API_URL) from the MCP client's config, so the server works
+//      without the CLI installed.
+//   2. The CLI's login: `hagit login -t <token>` writes ~/.hagit/config.json
+//      (see packages/cli/lib/state.js).
+// Read on every request so a re-login is picked up without restarting the MCP client.
 
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -14,16 +17,25 @@ export interface HagitConfig {
     apiUrl: string;
 }
 
-export function loadConfig(): HagitConfig {
-    let config: { token?: string | null; apiUrl?: string };
+function readCliConfig(): { token?: string | null; apiUrl?: string } | null {
     try {
-        config = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+        return JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
     } catch {
-        throw new Error(`No haGIT config at ${CONFIG_PATH}. Run \`hagit init\` and \`hagit login -t <token>\` first.`);
+        return null;
     }
-    if (!config.token) throw new Error("Not logged in to haGIT. Run `hagit login -t <token>` first.");
+}
+
+export function loadConfig(): HagitConfig {
+    const cli = readCliConfig();
+    const token = process.env.HAGIT_TOKEN?.trim() || cli?.token;
+    if (!token) {
+        throw new Error(
+            "Not connected to haGIT. Copy your token from Settings → Account on the haGIT website, then either set " +
+                "HAGIT_TOKEN in this MCP server's config or run `hagit login -t <token>`.",
+        );
+    }
 
     // HAGIT_API_URL lets an MCP client config point at a local dev server.
-    const apiUrl = process.env.HAGIT_API_URL || config.apiUrl || DEFAULT_API_URL;
-    return { token: config.token, apiUrl: apiUrl.replace(/\/+$/, "") };
+    const apiUrl = process.env.HAGIT_API_URL || cli?.apiUrl || DEFAULT_API_URL;
+    return { token, apiUrl: apiUrl.replace(/\/+$/, "") };
 }

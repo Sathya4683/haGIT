@@ -1,0 +1,70 @@
+name: Publish hagit-mcp to npm
+
+# Push a tag like mcp-v0.1.0 (matching packages/mcp/package.json) to publish.
+
+on:
+  push:
+    tags:
+      - "mcp-v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    concurrency:
+      group: publish-hagit-mcp
+      cancel-in-progress: false
+
+    permissions:
+      contents: write # GitHub Release
+      id-token: write # npm provenance
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Verify tag matches package version
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/mcp/package.json').version")
+          TAG_VERSION=${GITHUB_REF_NAME#mcp-v}
+          echo "package.json: $PKG_VERSION, tag: $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+      - name: Verify version not already published
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/mcp/package.json').version")
+          if [ -n "$(npm view hagit-mcp@$PKG_VERSION version 2>/dev/null || true)" ]; then
+            echo "::error::hagit-mcp@$PKG_VERSION is already published"
+            exit 1
+          fi
+
+      # The server bundles the private @hagit/coach-core workspace package, so install from the root.
+      - run: npm ci
+
+      - name: Typecheck and build
+        run: |
+          npm run typecheck -w hagit-mcp
+          npm run build -w hagit-mcp
+
+      - name: Publish
+        working-directory: packages/mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: hagit-mcp ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}

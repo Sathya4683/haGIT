@@ -83,6 +83,7 @@ hagit push
 | `hagit push`                 | Sync commits with server             | `hagit push`                      |
 | `hagit coach`                | AI review of your week               | `hagit coach -v`                  |
 | `hagit coach "<question>"`   | Ask the coach about your habits      | `hagit coach "why do I skip gym?"` |
+| `hagit telemetry [on\|off]`  | Anonymous usage telemetry (command timings and errors only) | `hagit telemetry off` |
 
 ---
 
@@ -137,7 +138,19 @@ coach-last.json
 | `commits.json`    | Local commit history                            |
 | `coach-last.json` | Last `hagit coach` review, so the next one can follow up |
 
-Commits are stored locally until they are pushed to the server.
+Commits are stored locally until they are pushed to the server. `hagit push` sends them in batches and is safe to retry: commits that already reached the server are never duplicated.
+
+---
+
+# Using haGIT from an AI assistant
+
+The same token works with [hagit-mcp](https://www.npmjs.com/package/hagit-mcp), so Claude Code and other MCP clients can read your stats and log check-ins:
+
+```
+claude mcp add hagit -- npx -y hagit-mcp
+```
+
+After `hagit login`, the MCP server reuses the saved token automatically.
 
 ---
 

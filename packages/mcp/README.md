@@ -1,71 +1,70 @@
 # hagit-mcp
 
-An [MCP](https://modelcontextprotocol.io) server for [haGIT](https://github.com/Sathya4683/haGIT). AI assistants like Claude Code, Claude Desktop, Gemini CLI and Cursor can use it to read your habit stats, log check-ins and create habits.
+An [MCP](https://modelcontextprotocol.io) server for [haGIT](https://hagithub.vercel.app), the git-style habit tracker. It lets AI assistants such as Claude Code, Claude Desktop, Cursor and Gemini CLI read your habit stats, log check-ins, create habits and search haGIT's research-backed habit library.
 
 ## Tools
 
-| Tool              | What it does                                                           |
-| ----------------- | ---------------------------------------------------------------------- |
-| `list_habits`     | Habits with total check-ins and last activity                          |
+| Tool | What it does |
+|---|---|
+| `list_habits` | Habits with total check-ins and last activity |
 | `get_habit_stats` | Streaks, consistency %, weekly trend, weekday and time-of-day patterns |
-| `get_checkins`    | Recent check-ins with their messages                                   |
-| `search_checkins` | Keyword search over check-in messages                                  |
-| `log_checkin`     | Log a check-in for an existing habit (it never creates habits)         |
-| `create_habit`    | Create a new habit (refuses duplicates, ignoring case)                 |
-| `search_knowledge_base` | Search haGIT's research-backed habit articles (passages tagged `KB<id>` with links) |
+| `get_checkins` | Recent check-ins with their messages |
+| `search_checkins` | Keyword search over check-in messages |
+| `log_checkin` | Log a check-in for an existing habit (it never creates habits) |
+| `create_habit` | Create a new habit (refuses duplicates, ignoring case) |
+| `search_knowledge_base` | Search the habit library (passages tagged `KB<id>` with links) |
 
-The stats are computed by the same code (`packages/coach-core`) that powers the haGIT web coach.
+Statistics are computed by the same code that powers the haGIT web coach.
 
 ## Setup
 
-1. Log in with the haGIT CLI. The server reuses the token saved in `~/.hagit/config.json`:
+1. Sign in at [hagithub.vercel.app](https://hagithub.vercel.app) and copy your token from **Settings → Account**.
+2. Add the server to your client.
 
-   ```
-   hagit init
-   hagit login -t <token>
-   ```
+**Claude Code**
 
-2. Build the server (from the repo root):
+```bash
+claude mcp add hagit -e HAGIT_TOKEN=<your-token> -- npx -y hagit-mcp
+```
 
-   ```
-   npm run build -w hagit-mcp
-   ```
+**Claude Desktop, Cursor, Gemini CLI** (any client with an `mcpServers` config)
 
-3. Register it with your client:
+```json
+{
+  "mcpServers": {
+    "hagit": {
+      "command": "npx",
+      "args": ["-y", "hagit-mcp"],
+      "env": { "HAGIT_TOKEN": "<your-token>" }
+    }
+  }
+}
+```
 
-   ```
-   claude mcp add hagit -- node /absolute/path/to/haGIT/packages/mcp/dist/index.js
-   ```
+Then ask things like "how consistent was I with reading this month?", "log that I read 20 pages" or "what does the research say about missing a day?".
 
-   For clients that use an `mcpServers` config (Claude Desktop, Gemini CLI, Cursor):
-
-   ```json
-   {
-     "mcpServers": {
-       "hagit": {
-         "command": "node",
-         "args": ["/absolute/path/to/haGIT/packages/mcp/dist/index.js"]
-       }
-     }
-   }
-   ```
-
-Then ask things like "how consistent was I with reading this month?" or "log that I read 20 pages".
+Already use the [haGIT CLI](https://www.npmjs.com/package/hagit-cli)? After `hagit login -t <token>` you can leave out `HAGIT_TOKEN`; the server reads the CLI's saved login from `~/.hagit/config.json`.
 
 ## Configuration
 
-| Variable        | Default                                   | Purpose                                         |
-| --------------- | ----------------------------------------- | ----------------------------------------------- |
-| `HAGIT_API_URL` | `apiUrl` from `~/.hagit/config.json`      | Point at another server, e.g. `http://localhost:3000` |
-| `HAGIT_TZ`      | the machine's timezone                    | Timezone for days and hours                     |
+| Variable | Default | Purpose |
+|---|---|---|
+| `HAGIT_TOKEN` | the CLI's saved token | Your haGIT API token |
+| `HAGIT_API_URL` | `https://hagithub.vercel.app` | Another server, e.g. `http://localhost:3000` |
+| `HAGIT_TZ` | the machine's timezone | Timezone for days and hours |
+
+Tokens last 90 days. **Rotate** in Settings revokes the old one everywhere; paste the new one into your client config.
 
 ## Development
 
-The server talks MCP over stdio, so stdout is reserved for the protocol and logs go to stderr. To try the tools interactively:
+From the repository root:
 
+```bash
+npm run build -w hagit-mcp
+npx @modelcontextprotocol/inspector node packages/mcp/dist/index.js
 ```
-npx @modelcontextprotocol/inspector node dist/index.js
-```
+
+The server speaks MCP over stdio, so stdout is reserved for the protocol and logs go to stderr.
 
 ## License
 

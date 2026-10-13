@@ -9,7 +9,7 @@ haGIT is a Git-inspired habit tracker. Habits are **branches**, completed action
 | **Knowledge base** | Hybrid retrieval (pgvector + Postgres full-text, reciprocal rank fusion) over curated articles |
 | **Reminders & reports** | Nightly push reminders via [ntfy](https://ntfy.sh) and a weekly one-page PDF report by email |
 | **Admin console** | Role-based access (user / editor / admin), markdown article editor, retrieval playground, jobs, audit log |
-| **Clients** | `hagit-cli` (npm), Chrome extension (MV3), `hagit-mcp` server |
+| **Clients** | `hagit-cli` and `hagit-mcp` (npm), Chrome extension (MV3) |
 | **Observability** | Structured logs to Loki, Prometheus metrics, Grafana dashboards and alerts |
 
 ---
@@ -208,14 +208,22 @@ Load `apps/extension/dist` via `chrome://extensions` → Developer mode → Load
 
 ## MCP server
 
-`hagit-mcp` exposes the habit tools, including knowledge-base search, to MCP clients (Claude Code, Claude Desktop, Gemini CLI, Cursor). It reuses the token saved by `hagit login`.
+[`hagit-mcp`](https://www.npmjs.com/package/hagit-mcp) exposes the habit tools, including knowledge-base search, to MCP clients (Claude Code, Claude Desktop, Cursor, Gemini CLI). Copy your token from Settings → Account (the dashboard shows ready-made commands there), then:
 
 ```bash
-npm run build -w hagit-mcp
-claude mcp add hagit -- node /absolute/path/to/haGIT/packages/mcp/dist/index.js
+claude mcp add hagit -e HAGIT_TOKEN=<token> -- npx -y hagit-mcp
 ```
 
-See [`packages/mcp/README.md`](packages/mcp/README.md) for other clients and options.
+The server runs on your machine and calls the haGIT API with your token. After `hagit login` it can reuse the CLI's saved token instead. See [`packages/mcp/README.md`](packages/mcp/README.md) for other clients and options.
+
+## Releases
+
+| Package | Release |
+|---|---|
+| `hagit-cli` | bump `packages/cli/package.json`, push tag `v<version>` |
+| `hagit-mcp` | bump `packages/mcp/package.json`, push tag `mcp-v<version>` |
+
+Each tag runs a workflow that checks the version, publishes to npm with provenance and creates a GitHub Release.
 
 ---
 

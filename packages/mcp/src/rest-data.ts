@@ -34,7 +34,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {
         throw new Error(`Couldn't reach haGIT at ${apiUrl}.`);
     }
-    if (res.status === 401) throw new Error("haGIT rejected the saved token (it may have expired). Run `hagit login -t <token>` again.");
+    if (res.status === 401) {
+        throw new Error("haGIT rejected the token (it may have expired or been rotated). Copy a fresh one from Settings → Account on the haGIT website.");
+    }
     if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error || `haGIT API error (${res.status}).`);
