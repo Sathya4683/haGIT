@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentWeekStart, previousWeekStart, weeklyInsight } from "./weekly-data";
+import { currentWeekStart, previousWeekStart, reportWindow, weeklyInsight } from "./weekly-data";
 
 const days = (counts: number[]) =>
     ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((weekday, i) => ({ date: `2026-10-0${i + 5}`, weekday, count: counts[i] }));
@@ -22,5 +22,25 @@ describe("weekly report helpers", () => {
         );
         const quiet = { habits: [{ name: "Read", commits: 0, previous: 4, currentStreak: 0, longestStreak: 5 }] };
         expect(weeklyInsight({ ...quiet, days: days([0, 0, 1, 0, 0, 0, 0]), totals: { commits: 1, previous: 4, activeDays: 1 } })).toMatch(/^Read went quiet/);
+    });
+});
+
+describe("reportWindow", () => {
+    it("reports a finished week as of its end and compares the whole previous week", () => {
+        expect(reportWindow("2026-10-05", "2026-10-13")).toEqual({
+            weekEnd: "2026-10-11",
+            streakAnchor: "2026-10-12",
+            prevStart: "2026-09-28",
+            prevEnd: "2026-10-04",
+        });
+    });
+
+    it("reports a week in progress as of today and compares the same days of last week", () => {
+        expect(reportWindow("2026-10-12", "2026-10-13")).toEqual({
+            weekEnd: "2026-10-18",
+            streakAnchor: "2026-10-13",
+            prevStart: "2026-10-05",
+            prevEnd: "2026-10-06",
+        });
     });
 });

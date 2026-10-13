@@ -82,6 +82,19 @@ async function pickArticles(d: Pick<WeeklyReportData, "totals" | "habits" | "wee
     }
 }
 
+/**
+ * Date window for a weekly report. A week still in progress (a mid-week download or preview) is
+ * reported "as of today": streaks run to today, and last week is compared over the same days so far.
+ */
+export function reportWindow(weekStart: string, today: string) {
+    const weekEnd = addDaysToKey(weekStart, 6);
+    const inProgress = today <= weekEnd;
+    const lastDay = inProgress ? today : weekEnd;
+    const elapsed = Math.min(6, Math.max(0, Math.round((Date.parse(lastDay) - Date.parse(weekStart)) / 86_400_000)));
+    const prevStart = addDaysToKey(weekStart, -7);
+    return { weekEnd, streakAnchor: inProgress ? today : addDaysToKey(weekEnd, 1), prevStart, prevEnd: addDaysToKey(prevStart, elapsed) };
+}
+
 /** Everything the weekly report (PDF and email) shows, for the week starting `weekStart`. */
 export async function buildWeeklyReport(userId: number, weekStart: string, tz: string): Promise<WeeklyReportData> {
     const weekEnd = addDaysToKey(weekStart, 6);
@@ -92,7 +105,7 @@ export async function buildWeeklyReport(userId: number, weekStart: string, tz: s
         prisma.commit.findMany({ where: { userId }, select: { habitId: true, timestamp: true } }),
     ]);
 
-    const prevStart = addDaysToKey(weekStart, -7);
+    const { streakAnchor, prevStart, prevEnd } = reportWindow(weekStart, localDayKey(new Date(), tz));
     const inRange = (key: string, from: string, to: string) => key >= from && key <= to;
     const dayCounts = new Map<string, number>();
     const habitDays = new Map<number, Set<string>>();
@@ -106,7 +119,7 @@ export async function buildWeeklyReport(userId: number, weekStart: string, tz: s
         habitDays.get(c.habitId)!.add(key);
         const h = perHabit.get(c.habitId) ?? { commits: 0, previous: 0 };
         if (inRange(key, weekStart, weekEnd)) h.commits++;
-        else if (inRange(key, prevStart, addDaysToKey(weekStart, -1))) h.previous++;
+        else if (inRange(key, prevStart, prevEnd)) h.previous++;
         perHabit.set(c.habitId, h);
     }
 
@@ -118,7 +131,7 @@ export async function buildWeeklyReport(userId: number, weekStart: string, tz: s
         .map((h) => {
             const set = habitDays.get(h.id) ?? new Set<string>();
             const counts = perHabit.get(h.id) ?? { commits: 0, previous: 0 };
-            return { name: h.name, ...counts, currentStreak: currentStreak(set, addDaysToKey(weekEnd, 1)), longestStreak: longestStreak(set) };
+            return { name: h.name, ...counts, currentStreak: currentStreak(set, streakAnchor), longestStreak: longestStreak(set) };
         })
         .sort((a, b) => b.commits - a.commits || b.currentStreak - a.currentStreak);
 

@@ -87,7 +87,7 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
         <Document title={`haGIT weekly report ${data.week.key}`} author="haGIT">
             <Page size="A4" style={s.page}>
                 {/* Header */}
-                <View style={[s.row, { alignItems: "center", marginBottom: 22 }]}>
+                <View style={[s.row, { alignItems: "center", marginBottom: 18 }]}>
                     <View style={{ width: 22, height: 22, backgroundColor: t.brand, borderWidth: 2, borderColor: t.ink, alignItems: "center", justifyContent: "center" }}>
                         <Text style={[s.mono, { color: "#ffffff", fontSize: 8 }]}>hG</Text>
                     </View>
@@ -100,10 +100,10 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                 </View>
 
                 <Text style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5 }}>Your week in commits</Text>
-                <View style={{ width: 44, height: 3, backgroundColor: t.brand, marginTop: 6, marginBottom: 18 }} />
+                <View style={{ width: 44, height: 3, backgroundColor: t.brand, marginTop: 6, marginBottom: 14 }} />
 
                 {/* Stat tiles */}
-                <View style={[s.row, { marginBottom: 22 }]}>
+                <View style={[s.row, { marginBottom: 16 }]}>
                     {stats.map((st, i) => (
                         <Box key={st.label} s={s} style={{ flex: 1, marginRight: i < stats.length - 1 ? 10 : 3 }}>
                             <Text style={s.label}>{st.label}</Text>
@@ -116,10 +116,10 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                 </View>
 
                 {/* Week bars + heatmap */}
-                <View style={[s.row, { marginBottom: 22 }]}>
+                <View style={[s.row, { marginBottom: 16 }]}>
                     <Box s={s} style={{ flex: 1.1, marginRight: 12 }}>
                         <Text style={s.label}>This week</Text>
-                        <View style={[s.row, { alignItems: "flex-end", height: 92, marginTop: 10 }]}>
+                        <View style={[s.row, { alignItems: "flex-end", height: 84, marginTop: 8 }]}>
                             {data.days.map((d) => (
                                 <View key={d.date} style={{ flex: 1, alignItems: "center" }}>
                                     <Text style={[s.mono, { fontSize: 7, marginBottom: 2 }]}>{d.count || ""}</Text>
@@ -148,13 +148,13 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                 </View>
 
                 {/* Habits */}
-                <Box s={s} style={{ marginBottom: 22, marginRight: 3 }}>
+                <Box s={s} style={{ marginBottom: 16, marginRight: 3 }}>
                     <Text style={[s.label, { marginBottom: 6 }]}>Habits</Text>
                     {data.habits.length === 0 && <Text style={{ color: t.muted }}>No habits yet.</Text>}
                     {data.habits.slice(0, 8).map((h, i) => {
                         const max = Math.max(1, data.habits[0]?.commits ?? 1);
                         return (
-                            <View key={h.name} style={[s.row, { alignItems: "center", paddingVertical: 5, borderTopWidth: i ? 1 : 0, borderTopColor: t.paperAlt, borderStyle: "dashed" }]}>
+                            <View key={h.name} style={[s.row, { alignItems: "center", paddingVertical: 4, borderTopWidth: i ? 1 : 0, borderTopColor: t.paperAlt, borderStyle: "dashed" }]}>
                                 <Text style={[s.mono, { width: 16, fontSize: 7, color: t.muted }]}>{String(i + 1).padStart(2, "0")}</Text>
                                 <Text style={{ width: 120, fontWeight: 700 }}>{h.name}</Text>
                                 <View style={{ flexGrow: 1, height: 5, backgroundColor: t.paperAlt, marginRight: 10 }}>
@@ -169,7 +169,7 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                 </Box>
 
                 {/* Insight */}
-                <View style={{ backgroundColor: t.brandSoft, borderLeftWidth: 4, borderLeftColor: t.brand, padding: 12, marginBottom: 22 }}>
+                <View style={{ backgroundColor: t.brandSoft, borderLeftWidth: 4, borderLeftColor: t.brand, padding: 12, marginBottom: 16 }}>
                     <Text style={[s.label, { color: t.brandDark, marginBottom: 4 }]}>Coach&apos;s note</Text>
                     <Text style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.45 }}>{data.insight}</Text>
                 </View>
@@ -178,10 +178,11 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                 {data.articles.length > 0 && (
                     <View>
                         <Text style={[s.label, { marginBottom: 8 }]}>Further reading from the habit library</Text>
-                        {data.articles.map((a) => (
+                        {/* Keep the report to one page: fewer links when the habits table is long. */}
+                        {data.articles.slice(0, data.habits.length > 6 ? 2 : 3).map((a) => (
                             <Link key={a.id} src={a.url} style={{ textDecoration: "none", color: t.ink, marginBottom: 8 }}>
                                 <View style={[s.row, { alignItems: "flex-start" }]}>
-                                    <Text style={[s.mono, { fontSize: 7, borderWidth: 1.5, borderColor: t.ink, paddingHorizontal: 3, paddingVertical: 1, marginRight: 8 }]}>KB{a.id}</Text>
+                                    <Text style={[s.mono, { fontSize: 7, width: 32, textAlign: "center", borderWidth: 1.5, borderColor: t.ink, paddingVertical: 1, marginRight: 8 }]}>KB{a.id}</Text>
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ fontWeight: 900, fontSize: 10 }}>{a.title}</Text>
                                         <Text style={{ fontSize: 8, color: t.muted, marginTop: 2 }}>{a.summary}</Text>
