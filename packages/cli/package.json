@@ -4,7 +4,7 @@
     "description": "Git-style habit tracker CLI",
     "main": "index.js",
     "bin": {
-        "hagit": "./bin/hagit.js"
+        "hagit": "bin/hagit.js"
     },
     "scripts": {
         "link": "npm link"

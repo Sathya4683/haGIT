@@ -27,8 +27,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           registry-url: "https://registry.npmjs.org"
+
+      # npm trusted publishing (OIDC from this workflow, no long-lived token) needs npm >= 11.5.1.
+      # Configure it once per package on npmjs.com > package > Settings > Trusted publishing.
+      # NPM_TOKEN stays as a fallback for packages without a trusted publisher.
+      - name: Use an npm that supports trusted publishing
+        run: npm install -g npm@^11.5.1
 
       - name: Verify tag matches package version
         run: |
