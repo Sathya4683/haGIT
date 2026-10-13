@@ -80,8 +80,10 @@ export function Heatmap({ counts, onDayClick, selectedDate, slot }: Props) {
         const el = scroller.current;
         if (!el || typeof ResizeObserver === "undefined") return;
         const fit = () => {
-            const fitted = Math.floor((el.clientWidth - 30) / weeks.length) - GAP;
-            setCell(fitted >= 9 ? Math.min(16, fitted) : 11);
+            // Column pitch that fits the whole year. Desktop cards shrink cells smoothly; only genuinely
+            // narrow screens switch to larger cells and scroll (no flip-flopping around a threshold).
+            const pitch = Math.floor((el.clientWidth - 30) / weeks.length);
+            setCell(pitch >= 10 ? Math.min(16, pitch - GAP) : 11);
         };
         fit();
         const ro = new ResizeObserver(fit);
