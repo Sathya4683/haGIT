@@ -10,7 +10,9 @@
 name: hagit
 
 include:
-  - infra/observability/docker-compose.yml
+  # local.env, not infra/observability/.env: that file holds the production monitoring settings.
+  - path: infra/observability/docker-compose.yml
+    env_file: infra/observability/local.env
 
 services:
   postgres:
